@@ -1,0 +1,646 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Optimisation OCP PV | Full Analysis</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/date-fns@2.29.3/cdn.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@2.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@1.2.1/dist/chartjs-plugin-zoom.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .input-group { display: flex; align-items: center; margin-bottom: 0.75rem; }
+        .input-group label { flex: 1; margin-right: 1rem; font-size: 0.875rem; color: #4B5563; }
+        .input-group .input-container { flex: 1; display: flex; align-items: center; }
+        .input-group input, .input-group select { width: 100%; padding: 0.5rem; border-radius: 0.375rem; border: 1px solid #D1D5DB; }
+        .input-group input { text-align: right; }
+        .input-group .unit { margin-left: 0.5rem; font-size: 0.875rem; color: #6B7280; min-width: 60px; }
+        .calc-step { margin-bottom: 1.5rem; padding-bottom: 1.5rem; border-bottom: 1px solid #E5E7EB; }
+        .calc-step:last-child { border-bottom: none; padding-bottom: 0; }
+        .calc-title { font-size: 1.125rem; font-weight: 600; color: #1F2937; margin-bottom: 0.5rem; }
+        .calc-formula { font-family: monospace; background-color: #F3F4F6; padding: 0.75rem; border-radius: 0.375rem; color: #374151; font-size: 0.8rem; white-space: pre-wrap; word-wrap: break-word; line-height: 1.5; }
+        .calc-value { font-weight: 700; color: #059669; } /* Green color */
+        details > summary { cursor: pointer; }
+        .file-input-label { display: block; padding: 0.75rem 1rem; border: 2px dashed #D1D5DB; border-radius: 0.5rem; text-align: center; cursor: pointer; background-color: #F9FAFB; color: #4B5563; transition: background-color 0.2s, border-color 0.2s; }
+        .file-input-label:hover { background-color: #F3F4F6; border-color: #9CA3AF; }
+        #profile_uploader { display: none; }
+        .tab-button { padding: 0.5rem 1rem; cursor: pointer; border-bottom: 2px solid transparent; font-size: 0.875rem; }
+        .tab-button.active { border-color: #059669; color: #059669; font-weight: 600; } /* Green color */
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+    </style>
+</head>
+
+<body class="bg-gray-50 text-gray-800">
+    <div class="container mx-auto p-4 md:p-8">
+        <header class="text-center mb-8">
+            <h1 class="text-3xl md:text-4xl font-bold text-gray-900">Industrial Energy Storage Calculator</h1>
+            <p class="text-md text-gray-600 mt-2">Annual Simulation (MWh), Financial Analysis, and Optimization</p>
+        </header>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <!-- Column 1: Inputs -->
+            <div class="lg:col-span-1 bg-white p-6 rounded-lg shadow-lg">
+                <h2 class="text-2xl font-bold mb-6 border-b pb-4">Parameters</h2>
+                <details class="mb-4" open>
+                    <summary class="text-lg font-semibold">Simulation & Technology</summary>
+                    <div class="mt-4 pl-4 border-l-2 border-gray-200">
+                        <div class="mb-6">
+                            <h3 class="text-md font-semibold mb-3">Simulation Profile (CSV/Excel)</h3>
+                            <label for="profile_uploader" class="file-input-label"><span>Choose CSV or Excel profile (8760h)</span></label>
+                            <input type="file" id="profile_uploader" accept=".csv,.xlsx,.xls">
+                            <p id="file-name" class="text-sm mt-2"></p>
+                            <p class="text-xs text-gray-500 mt-1">Required columns: `production_mwh` and `consumption_mwh`. Excel columns such as `La date` and `Production enMWH` are also accepted. If consumption is missing, a constant 25 MWh hourly load can be generated.</p>
+                        </div>
+                        <div class="mb-6">
+                            <h3 class="text-md font-semibold mb-3">PV Installation</h3>
+                            <div class="input-group"><label for="pv_peak_power">PV Peak Power (indicative)</label><div class="input-container"><input type="number" id="pv_peak_power" value="50"><span class="unit">MWp</span></div></div>
+                        </div>
+                        <div class="mb-6">
+                            <h3 class="text-md font-semibold mb-3">Storage Technology</h3>
+                            <select id="technology_selector" class="w-full bg-gray-100 border-gray-300 rounded-md shadow-sm focus:border-emerald-500 focus:ring-emerald-500">
+                                <option value="lithium_ion">Lithium-ion Battery</option>
+                                <option value="vanadium_flow">Vanadium Flow Battery</option>
+                                <option value="pumped_hydro">Pumped Hydro Storage</option>
+                            </select>
+                        </div>
+                    </div>
+                </details>
+                <details class="mb-4">
+                    <summary class="text-lg font-semibold">Battery Array Parameters</summary>
+                    <div class="mt-4 pl-4 border-l-2 border-gray-200">
+                        <div class="input-group"><label for="number_of_batteries">Number of batteries</label><div class="input-container"><input type="number" id="number_of_batteries" value="1" min="1"><span class="unit">units</span></div></div>
+                        <div class="input-group"><label for="power_capacity">Nominal Power (per battery)</label><div class="input-container"><input type="number" id="power_capacity" value="5"><span class="unit">MW</span></div></div>
+                        <div class="input-group"><label for="discharge_duration">Discharge Duration (per battery)</label><div class="input-container"><input type="number" id="discharge_duration" value="4"><span class="unit">hours</span></div></div>
+                        <div class="input-group"><label for="investment_power">Inv. Cost - Power</label><div class="input-container"><input type="number" id="investment_power"><span class="unit">$/MW</span></div></div>
+                        <div class="input-group"><label for="investment_energy">Inv. Cost - Energy</label><div class="input-container"><input type="number" id="investment_energy"><span class="unit">$/MWh</span></div></div>
+                        <div class="input-group"><label for="round_trip_efficiency">Round Trip Efficiency (RTE)</label><div class="input-container"><input type="number" id="round_trip_efficiency"><span class="unit">%</span></div></div>
+                        <div class="input-group"><label for="depth_of_discharge">Depth of Discharge (DoD)</label><div class="input-container"><input type="number" id="depth_of_discharge"><span class="unit">%</span></div></div>
+                        <div class="input-group"><label for="cycle_lifetime">Cycle Lifetime</label><div class="input-container"><input type="number" id="cycle_lifetime"><span class="unit">cycles</span></div></div>
+                        <div class="input-group"><label for="temporal_degradation">Temporal Degradation</label><div class="input-container"><input type="number" id="temporal_degradation" step="0.01"><span class="unit">% / yr</span></div></div>
+                        <div class="input-group"><label for="eol_threshold">End-of-Life Threshold (SOH)</label><div class="input-container"><input type="number" id="eol_threshold"><span class="unit">%</span></div></div>
+                    </div>
+                </details>
+                <details class="mb-4">
+                    <summary class="text-lg font-semibold">Economic Scenario</summary>
+                    <div class="mt-4 pl-4 border-l-2 border-gray-200">
+                        <div class="input-group"><label for="charging_cost">Electricity Purchase Price</label><div class="input-container"><input type="number" id="charging_cost" value="150" step="1"><span class="unit">$/MWh</span></div></div>
+                        <div class="input-group"><label for="selling_price">Surplus Sale Price</label><div class="input-container"><input type="number" id="selling_price" value="80" step="1"><span class="unit">$/MWh</span></div></div>
+                        <div class="input-group"><label for="om_power">O&M - Power</label><div class="input-container"><input type="number" id="om_power"><span class="unit">$/MW-yr</span></div></div>
+                        <div class="input-group"><label for="eol_cost_energy">End-of-Life Cost (value)</label><div class="input-container"><input type="number" id="eol_cost_energy"><span class="unit">$/MWh</span></div></div>
+                        <div class="input-group"><label for="discount_rate">Discount Rate</label><div class="input-container"><input type="number" id="discount_rate" value="5"><span class="unit">%</span></div></div>
+                    </div>
+                </details>
+                <div class="mt-8">
+                    <button id="calculate_button" class="w-full bg-emerald-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 transition-colors duration-300">
+                        Run Simulation
+                    </button>
+                </div>
+            </div>
+
+            <!-- Column 2 & 3: Results -->
+            <div id="results_columns" class="lg:col-span-2 bg-white p-6 rounded-lg shadow-lg hidden">
+                <div class="border-b border-gray-200">
+                    <nav class="-mb-px flex space-x-4 flex-wrap" aria-label="Tabs">
+                        <button class="tab-button active" data-tab="summary_tab">Summary & Costs</button>
+                        <button class="tab-button" data-tab="profile_tab">Detailed Profiles</button>
+                        <button class="tab-button" data-tab="flow_tab">Energy Flows</button>
+                        <button class="tab-button" data-tab="details_tab">Calculation Details</button>
+                        <button class="tab-button" data-tab="optim_tab">Optimization</button>
+                    </nav>
+                </div>
+
+                <div id="summary_tab" class="tab-content active mt-6">
+                    <div id="results_content"></div>
+                </div>
+
+                <div id="profile_tab" class="tab-content mt-6">
+                    <div class="mt-8 pt-6 border-t">
+                         <h3 class="text-xl font-semibold mb-4">Detailed Weekly Overview</h3>
+                         <div class="flex items-center space-x-4 mb-6 bg-gray-100 p-3 rounded-md">
+                             <label for="week_selector" class="font-semibold text-sm">Select a week:</label>
+                             <input type="week" id="week_selector" class="border-gray-300 rounded-md shadow-sm text-sm">
+                         </div>
+                         <div style="height: 450px;">
+                             <canvas id="weekly_overview_chart"></canvas>
+                         </div>
+                    </div>
+                </div>
+
+                <div id="flow_tab" class="tab-content mt-6">
+                    <h3 class="text-xl font-semibold mb-4">Annual Energy Flow Balance</h3>
+                    <canvas id="energy_flow_chart"></canvas>
+                </div>
+                
+                <div id="details_tab" class="tab-content mt-6">
+                    <h3 class="text-xl font-semibold mb-4">Calculation Details</h3>
+                    <div id="calculation_details"></div>
+                    <div class="mt-8 pt-6 border-t">
+                        <h3 class="text-xl font-semibold mb-4">Technology Comparison Analysis</h3>
+                        <p class="text-sm text-gray-600 mb-4">Compare LCOS and ROI across different technologies.</p>
+                        <button id="compare_button" class="w-full mb-4 bg-gray-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-gray-700">Run Comparison</button>
+                        <div id="comparative_results_container" class="hidden">
+                            <canvas id="comparative_chart"></canvas>
+                        </div>
+                    </div>
+                </div>
+                
+                <div id="optim_tab" class="tab-content mt-6">
+                    <div id="optimization_section">
+                        <h3 class="text-xl font-semibold mb-4">Battery Size Optimization</h3>
+                        <div class="input-group"><label for="optim_min_cap">Min Energy Capacity</label><div class="input-container"><input type="number" id="optim_min_cap" value="10"><span class="unit">MWh</span></div></div>
+                        <div class="input-group"><label for="optim_max_cap">Max Energy Capacity</label><div class="input-container"><input type="number" id="optim_max_cap" value="100"><span class="unit">MWh</span></div></div>
+                        <div class="input-group"><label for="optim_step">Step</label><div class="input-container"><input type="number" id="optim_step" value="5"><span class="unit">MWh</span></div></div>
+                        <button id="optimize_button" class="w-full bg-emerald-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-emerald-700">Run Optimization</button>
+                        <div id="optimization_results_container" class="mt-4 hidden">
+                             <canvas id="optimization_chart"></canvas>
+                             <p id="optimization_summary" class="text-center font-semibold mt-2"></p>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="download_container" class="mt-8 hidden">
+                    <button id="download_button" class="w-full bg-green-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-green-700">
+                        Download Report (Excel)
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // --- DATA & CONFIG ---
+            const techData = { 'lithium_ion': { name: "Lithium Ion", investment_power: 150000, investment_energy: 200000, om_power: 3000, eol_cost_energy: 8000, round_trip_efficiency: 86, depth_of_discharge: 80, cycle_lifetime: 4000, temporal_degradation: 1, eol_threshold: 80, om_energy: 2, self_discharge: 1 }, 'vanadium_flow': { name: "Vanadium Flow", investment_power: 400000, investment_energy: 350000, om_power: 6000, eol_cost_energy: -50000, round_trip_efficiency: 68, depth_of_discharge: 100, cycle_lifetime: 20000, temporal_degradation: 0.1, eol_threshold: 80, om_energy: 10, self_discharge: 0 }, 'pumped_hydro': { name: "Pumped Hydro Storage", investment_power: 1100000, investment_energy: 50000, om_power: 20000, eol_cost_energy: 0, round_trip_efficiency: 80, depth_of_discharge: 100, cycle_lifetime: 30000, temporal_degradation: 0, eol_threshold: 95, om_energy: 0.4, self_discharge: 0 } };
+            let profileData = [];
+            let lastResults = null;
+            let charts = {};
+
+            // --- DOM ELEMENTS ---
+            const techSelector = document.getElementById('technology_selector');
+            const calculateButton = document.getElementById('calculate_button');
+            const downloadButton = document.getElementById('download_button');
+            const profileUploader = document.getElementById('profile_uploader');
+            const fileNameDisplay = document.getElementById('file-name');
+            const optimizeButton = document.getElementById('optimize_button');
+            const compareButton = document.getElementById('compare_button');
+            const weekSelector = document.getElementById('week_selector');
+
+            // --- UTILITY FUNCTIONS ---
+            const formatNumber = (value, decimals = 2) => (isNaN(value) || !isFinite(value)) ? "N/A" : value.toLocaleString('en-US', { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
+            const formatCurrency = (value, unit = '$') => (isNaN(value) || !isFinite(value)) ? `N/A ${unit.trim()}` : `${value < 0 ? '-' : ''}${unit.trim()}${formatNumber(Math.abs(value))}`;
+            
+            function showModal(message) {
+                const existingModal = document.getElementById('custom-modal');
+                if (existingModal) existingModal.remove();
+                const messageBox = document.createElement('div');
+                messageBox.id = 'custom-modal';
+                messageBox.className = 'fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50';
+                messageBox.innerHTML = `<div class="bg-white p-6 rounded-lg shadow-xl text-center max-w-sm"><p class="text-lg font-semibold mb-4">${message}</p><button class="bg-emerald-600 text-white px-4 py-2 rounded-md hover:bg-emerald-700">OK</button></div>`;
+                messageBox.querySelector('button').onclick = () => messageBox.remove();
+                document.body.appendChild(messageBox);
+            }
+
+            // --- DATA HANDLING & PARSING ---
+            function getInputs() {
+                const inputs = {};
+                document.querySelectorAll('input, select').forEach(el => { if (el.id) inputs[el.id] = el.type === 'number' ? parseFloat(el.value) || 0 : el.value; });
+                const selectedTech = techData[inputs.technology_selector];
+                inputs.om_energy = selectedTech.om_energy;
+                inputs.self_discharge = selectedTech.self_discharge;
+                return inputs;
+            }
+
+            async function handleProfileFile(event) {
+                const file = event.target.files[0];
+                if (!file) return;
+                fileNameDisplay.textContent = `Reading ${file.name}...`;
+                fileNameDisplay.classList.remove('text-red-500', 'text-green-600');
+                try {
+                    const parsed = await parseUploadedProfileFile(file);
+                    profileData = parsed.profileData;
+
+                    if (profileData.length >= 8760) {
+                        const loadMessage = parsed.generatedConstantLoad ? " Missing consumption column: constant 25 MWh hourly load generated." : "";
+                        const timestampMessage = parsed.generatedHourlyTimestamps ? " Hourly timestamps generated from 2025-01-01T00:00:00." : "";
+                        fileNameDisplay.textContent = `${parsed.detectedFormat} profile parsed successfully: ${profileData.length.toLocaleString('en-US')} rows.${timestampMessage}${loadMessage}`;
+                        fileNameDisplay.classList.add('text-green-600');
+                        weekSelector.value = '2025-W01';
+                        weekSelector.disabled = false;
+                    } else {
+                        throw new Error(`Profile length is not 8760/8784: ${profileData.length} rows read.`);
+                    }
+                } catch (error) {
+                    fileNameDisplay.textContent = `Error: ${error.message}`;
+                    fileNameDisplay.classList.add('text-red-500');
+                    profileData = [];
+                    weekSelector.disabled = true;
+                }
+            }
+
+            async function parseUploadedProfileFile(file) {
+                const extension = getProfileFileExtension(file.name);
+                if (extension === 'csv') {
+                    return parseCsvProfileText(await file.text());
+                }
+                if (extension === 'xlsx' || extension === 'xls') {
+                    return parseExcelProfileFile(file);
+                }
+                throw new Error("Unsupported file type. Please upload .csv, .xlsx, or .xls.");
+            }
+
+            function getProfileFileExtension(fileName) {
+                const lastDotIndex = fileName.lastIndexOf('.');
+                return lastDotIndex === -1 ? '' : fileName.slice(lastDotIndex + 1).toLowerCase();
+            }
+
+            function parseCsvProfileText(csvText) {
+                const lines = csvText.trim().split(/\r?\n/).filter(line => line.trim().length > 0);
+                if (lines.length < 2) throw new Error("CSV profile must include a header and data rows.");
+                const delimiter = lines[0].includes(';') ? ';' : ',';
+                const headers = lines[0].split(delimiter).map(normalizeProfileHeader);
+                const prodIndex = findProfileColumnIndex(headers, PROFILE_PV_ALIASES);
+                const consIndex = findProfileColumnIndex(headers, PROFILE_LOAD_ALIASES);
+                if (prodIndex === -1) throw new Error("Could not detect PV production column.");
+
+                const profile = lines.slice(1).map((line, index) => {
+                    const values = line.split(delimiter).map(value => value.trim().replace(/^"|"$/g, ''));
+                    const prodVal = parseProfileNumber(values[prodIndex], "production", index + 2);
+                    const consVal = consIndex === -1 ? 25 : parseProfileNumber(values[consIndex], "consumption", index + 2);
+                    return { production_mwh: prodVal, consumption_mwh: consVal };
+                });
+
+                return {
+                    profileData: profile,
+                    detectedFormat: "CSV",
+                    generatedHourlyTimestamps: false,
+                    generatedConstantLoad: consIndex === -1,
+                };
+            }
+
+            async function parseExcelProfileFile(file) {
+                if (typeof XLSX === 'undefined') throw new Error("Excel parser is not available.");
+                const workbook = XLSX.read(await file.arrayBuffer(), { type: 'array', cellDates: true });
+                const firstSheetName = workbook.SheetNames[0];
+                if (!firstSheetName) throw new Error("Excel file does not contain any worksheets.");
+                const rows = XLSX.utils.sheet_to_json(workbook.Sheets[firstSheetName], { defval: '', raw: true });
+                return rowsToCalculatorProfileData(rows);
+            }
+
+            const PROFILE_TIMESTAMP_ALIASES = ['la date', 'date', 'timestamp', 'datetime', 'time', 'heure', 'date_time'];
+            const PROFILE_PV_ALIASES = ['production enmwh', 'production en mwh', 'production_mwh', 'pv_production_mwh', 'pv_mwh', 'production', 'energie_pv', 'energy_pv', 'pv', 'pvsyst_mwh'];
+            const PROFILE_LOAD_ALIASES = ['consumption_mwh', 'load_mwh', 'demand_mwh', 'consommation', 'consommation_mwh', 'charge_mwh', 'load'];
+
+            function rowsToCalculatorProfileData(rows) {
+                if (rows.length === 0) throw new Error("Excel worksheet does not contain any data rows.");
+                const normalizedRows = rows.map(normalizeProfileRowKeys);
+                const headers = Object.keys(normalizedRows[0]);
+                const timestampColumn = findProfileColumn(headers, PROFILE_TIMESTAMP_ALIASES);
+                const pvColumn = findProfileColumn(headers, PROFILE_PV_ALIASES);
+                const loadColumn = findProfileColumn(headers, PROFILE_LOAD_ALIASES);
+                const generatedHourlyTimestamps = normalizedRows.length === 8760 || normalizedRows.length === 8784;
+
+                if (!pvColumn) throw new Error("Could not detect PV production column. Expected one of: Production enMWH, production_mwh, pv_mwh, energie_pv.");
+                if (!timestampColumn && !generatedHourlyTimestamps) throw new Error("Timestamp issue: could not detect timestamp column.");
+
+                const timestamps = generatedHourlyTimestamps ? normalizedRows.map((_, index) => generateHourlyTimestamp(index)) : [];
+                if (generatedHourlyTimestamps) validateGeneratedProfileTimestamps(timestamps);
+
+                return {
+                    profileData: normalizedRows.map((row, index) => ({
+                        production_mwh: parseProfileNumber(row[pvColumn], "production", index + 2),
+                        consumption_mwh: loadColumn ? parseProfileNumber(row[loadColumn], "consumption", index + 2) : 25,
+                    })),
+                    detectedFormat: "Excel",
+                    generatedHourlyTimestamps,
+                    generatedConstantLoad: !loadColumn,
+                };
+            }
+
+            function normalizeProfileHeader(header) {
+                return String(header).trim().toLowerCase().replace(/\s+/g, ' ').replace(/\u00a0/g, ' ');
+            }
+
+            function normalizeProfileRowKeys(row) {
+                return Object.entries(row).reduce((normalized, [key, value]) => {
+                    normalized[normalizeProfileHeader(key)] = value;
+                    return normalized;
+                }, {});
+            }
+
+            function findProfileColumn(headers, aliases) {
+                return aliases.find(alias => headers.includes(alias));
+            }
+
+            function findProfileColumnIndex(headers, aliases) {
+                return headers.findIndex(header => aliases.includes(header));
+            }
+
+            function parseProfileNumber(value, label, rowNumber) {
+                const parsed = typeof value === 'number' ? value : Number(String(value).trim().replace(',', '.'));
+                if (!isFinite(parsed)) throw new Error(`Invalid numeric value for ${label} at row ${rowNumber}.`);
+                if (parsed < 0) throw new Error(`Negative ${label} value at row ${rowNumber}.`);
+                return parsed;
+            }
+
+            function generateHourlyTimestamp(rowIndex, startDate = "2025-01-01T00:00:00") {
+                const [datePart, timePart = "00:00:00"] = startDate.split("T");
+                const [year, month, day] = datePart.split("-").map(Number);
+                const [hour = 0, minute = 0, second = 0] = timePart.split(":").map(Number);
+                const utcMs = Date.UTC(year, month - 1, day, hour, minute, second) + rowIndex * 60 * 60 * 1000;
+                const date = new Date(utcMs);
+                const yyyy = date.getUTCFullYear();
+                const mm = String(date.getUTCMonth() + 1).padStart(2, "0");
+                const dd = String(date.getUTCDate()).padStart(2, "0");
+                const hh = String(date.getUTCHours()).padStart(2, "0");
+                return `${yyyy}-${mm}-${dd}T${hh}:00:00`;
+            }
+
+            function validateGeneratedProfileTimestamps(timestamps) {
+                const seen = new Set();
+                let previous = -Infinity;
+                timestamps.forEach((timestamp, index) => {
+                    if (seen.has(timestamp)) throw new Error(`Timestamp issue: row ${index + 1} duplicates ${timestamp}.`);
+                    seen.add(timestamp);
+                    const current = cleanProfileTimestampToUtcMs(timestamp);
+                    if (current <= previous) throw new Error(`Timestamp issue: row ${index + 1} is not strictly ordered.`);
+                    previous = current;
+                });
+            }
+
+            function cleanProfileTimestampToUtcMs(timestamp) {
+                const match = timestamp.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})$/);
+                if (!match) throw new Error(`Timestamp issue: invalid generated timestamp ${timestamp}.`);
+                return Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3]), Number(match[4]), Number(match[5]), Number(match[6]));
+            }
+
+            // --- CORE SIMULATION & CALCULATION ---
+            function runProfileSimulation(inputs, profile) {
+                const batteryCapacity_MWh = inputs.power_capacity * inputs.discharge_duration;
+                const usableCapacity_MWh = batteryCapacity_MWh * (inputs.depth_of_discharge / 100);
+                const minSoc_MWh = batteryCapacity_MWh * (1 - (inputs.depth_of_discharge / 100));
+                const maxSoc_MWh = minSoc_MWh + usableCapacity_MWh;
+                const chargePowerLimit_MW = inputs.power_capacity;
+                const dischargePowerLimit_MW = inputs.power_capacity;
+                const rte_decimal = inputs.round_trip_efficiency / 100;
+                const self_discharge_hourly_decimal = inputs.self_discharge / 100 / 24; 
+                const charge_eff_hourly = Math.sqrt(rte_decimal);
+                const discharge_eff_hourly = Math.sqrt(rte_decimal);
+                let soc_MWh = minSoc_MWh + usableCapacity_MWh / 2;
+                let hourly = { soc: [], prod: [], cons: [], batteryCharge: [], batteryDischarge: [], gridImport: [], gridExport: [], hourlyNetCost: [] };
+                let totals = { import: 0, export: 0, charge: 0, discharge: 0, consumption: 0, production: 0, direct: 0 };
+                
+                for (let i = 0; i < profile.length; i++) {
+                    const production_MWh = profile[i].production_mwh;
+                    const consumption_MWh = profile[i].consumption_mwh;
+
+                    soc_MWh = Math.max(minSoc_MWh, soc_MWh * (1 - self_discharge_hourly_decimal));
+                    totals.production += production_MWh;
+                    totals.consumption += consumption_MWh;
+                    let netEnergy = production_MWh - consumption_MWh;
+                    let currentBatteryCharge_MWh = 0, currentBatteryDischarge_MWh = 0, currentGridImport_MWh = 0, currentGridExport_MWh = 0;
+                    if (netEnergy > 0) {
+                        const availableForCharge = Math.min(netEnergy, chargePowerLimit_MW);
+                        const maxChargeIntoBattery = (maxSoc_MWh - soc_MWh) / charge_eff_hourly; 
+                        const actualChargeAmount_MWh = Math.min(availableForCharge, maxChargeIntoBattery);
+                        soc_MWh += actualChargeAmount_MWh * charge_eff_hourly;
+                        currentBatteryCharge_MWh = actualChargeAmount_MWh;
+                        currentGridExport_MWh = netEnergy - actualChargeAmount_MWh;
+                    } else if (netEnergy < 0) {
+                        const neededFromBattery = Math.min(Math.abs(netEnergy), dischargePowerLimit_MW);
+                        const maxDischargeFromBattery = (soc_MWh - minSoc_MWh) * discharge_eff_hourly;
+                        const actualDischargeAmount_MWh = Math.min(neededFromBattery, maxDischargeFromBattery);
+                        soc_MWh -= actualDischargeAmount_MWh / discharge_eff_hourly;
+                        currentBatteryDischarge_MWh = actualDischargeAmount_MWh;
+                        currentGridImport_MWh = Math.abs(netEnergy) - actualDischargeAmount_MWh;
+                    }
+                    totals.charge += currentBatteryCharge_MWh;
+                    totals.discharge += currentBatteryDischarge_MWh;
+                    totals.import += currentGridImport_MWh;
+                    totals.export += currentGridExport_MWh;
+                    totals.direct += Math.min(production_MWh, consumption_MWh);
+                    
+                    hourly.soc.push(batteryCapacity_MWh > 0 ? (soc_MWh / batteryCapacity_MWh) * 100 : 0);
+                    hourly.prod.push(production_MWh);
+                    hourly.cons.push(consumption_MWh);
+                    hourly.batteryCharge.push(currentBatteryCharge_MWh);
+                    hourly.batteryDischarge.push(currentBatteryDischarge_MWh);
+                    hourly.gridImport.push(currentGridImport_MWh);
+                    hourly.gridExport.push(currentGridExport_MWh);
+                    hourly.hourlyNetCost.push((currentGridImport_MWh * inputs.charging_cost) - (currentGridExport_MWh * inputs.selling_price));
+                }
+                const equivalentCycles = usableCapacity_MWh > 0 ? totals.discharge / usableCapacity_MWh : 0;
+                return { equivalentCycles, totals, hourly };
+            }
+
+            function runFinancialCalculation(inputs, simResults) {
+                const P_cap_MW = inputs.power_capacity;
+                const E_cap_MWh = inputs.power_capacity * inputs.discharge_duration;
+                const r = inputs.discount_rate / 100;
+                const deg_t = inputs.temporal_degradation / 100;
+                const eol_thresh = inputs.eol_threshold / 100;
+                const annual_cycles = simResults.equivalentCycles;
+                const Life_cyc = inputs.cycle_lifetime;
+                const deg_c = Life_cyc > 0 ? (1 - Math.pow(eol_thresh, 1 / Life_cyc)) : 0;
+                let N_op = 50;
+                const log_term_denominator = Math.log(1 - deg_t) + annual_cycles * Math.log(1 - deg_c);
+                if (log_term_denominator < 0 && eol_thresh > 0) { N_op = Math.log(eol_thresh) / log_term_denominator; }
+                N_op = Math.min(50, Math.max(0, isFinite(N_op) ? N_op : 50));
+                const initial_investment = (inputs.investment_power * P_cap_MW) + (inputs.investment_energy * E_cap_MWh);
+                let total_discounted_cost = initial_investment, total_discounted_energy_out = 0;
+                const cost_components = { investment: initial_investment, om: 0, eol: 0, charging: 0 };
+                for (let n = 1; n <= N_op; n++) {
+                    const discount_factor = 1 / Math.pow(1 + r, n);
+                    const SOH_at_year_n = Math.pow(1 - deg_t, n) * Math.pow(1 - deg_c, n * annual_cycles);
+                    const Eout_n = simResults.totals.discharge * SOH_at_year_n;
+                    total_discounted_energy_out += Eout_n * discount_factor;
+                    const Ein_n = simResults.totals.charge * SOH_at_year_n;
+                    cost_components.om += ((inputs.om_power * P_cap_MW) + (inputs.om_energy * Eout_n)) * discount_factor;
+                    cost_components.charging += (Ein_n * inputs.selling_price) * discount_factor;
+                }
+                const final_soh_factor_at_N_op = Math.pow(1 - deg_t, N_op) * Math.pow(1 - deg_c, N_op * annual_cycles);
+                cost_components.eol = (inputs.eol_cost_energy * E_cap_MWh * final_soh_factor_at_N_op) / Math.pow(1 + r, N_op);
+                total_discounted_cost += cost_components.om + cost_components.charging - cost_components.eol;
+                const lcos = total_discounted_energy_out > 0 ? total_discounted_cost / total_discounted_energy_out : 0;
+                const annuity_factor = (r > 0) ? (r * Math.pow(1 + r, N_op)) / (Math.pow(1 + r, N_op) - 1) : (N_op > 0 ? 1/N_op : 0);
+                const annualized_cost = total_discounted_cost * annuity_factor;
+                const acc = P_cap_MW > 0 ? annualized_cost / P_cap_MW : 0;
+                const annual_net_economic_balance = ((simResults.totals.direct + simResults.totals.discharge) * inputs.charging_cost) + (simResults.totals.export * inputs.selling_price) - (simResults.totals.import * inputs.charging_cost);
+                const simple_payback = annual_net_economic_balance > 0 ? initial_investment / annual_net_economic_balance : Infinity;
+                return { N_op, lcos, acc, simple_payback, initial_investment, annual_cycles, E_cap_MWh, P_cap_MW, total_discounted_cost, total_discounted_energy_out, cost_components };
+            }
+
+            // --- UI & DISPLAY FUNCTIONS ---
+            function calculateAndShowResults() {
+                if (profileData.length === 0) { showModal("Please load a CSV profile file first."); return; }
+                document.getElementById('results_columns').classList.remove('hidden');
+                
+                const currentInputs = getInputs();
+                
+                const systemInputs = { ...currentInputs };
+                systemInputs.power_capacity = currentInputs.power_capacity * currentInputs.number_of_batteries;
+
+                const simResults = runProfileSimulation(systemInputs, profileData);
+                const mainResults = runFinancialCalculation(systemInputs, simResults);
+                
+                lastResults = { inputs: currentInputs, systemInputs, simResults, financialResults: mainResults };
+                
+                displayMainResults(simResults, mainResults);
+                displayCalculationDetails(currentInputs, mainResults);
+                updateAndDisplayWeeklyChart();
+                displayEnergyFlowChart(simResults);
+                document.getElementById('comparative_results_container').classList.add('hidden');
+                document.getElementById('optimization_results_container').classList.add('hidden');
+                document.getElementById('download_container').classList.remove('hidden');
+            }
+            
+            function displayMainResults(sim, fin) {
+                const selfConsumptionRate = sim.totals.production > 0 ? (sim.totals.direct + sim.totals.discharge) / sim.totals.production * 100 : 0;
+                const selfSufficiencyRate = sim.totals.consumption > 0 ? (sim.totals.direct + sim.totals.discharge) / sim.totals.consumption * 100 : 0;
+                document.getElementById('results_content').innerHTML = `
+                    <div class="mb-4"><h3 class="text-xl font-semibold mb-2">Annual Energy Balance</h3>
+                        <div class="space-y-2 text-sm"><div class="flex justify-between"><span>PV Production:</span> <strong>${formatNumber(sim.totals.production, 0)} MWh</strong></div><div class="flex justify-between"><span>Consumption:</span> <strong>${formatNumber(sim.totals.consumption, 0)} MWh</strong></div><div class="flex justify-between"><span>Grid Import:</span> <strong>${formatNumber(sim.totals.import, 0)} MWh</strong></div><div class="flex justify-between"><span>Grid Export:</span> <strong>${formatNumber(sim.totals.export, 0)} MWh</strong></div></div>
+                    </div>
+                     <div class="mb-4"><h3 class="text-xl font-semibold mb-2">System Performance</h3>
+                         <div class="grid grid-cols-2 gap-4"><div><p class="text-2xl font-bold text-green-600">${formatNumber(selfConsumptionRate, 1)}%</p><p class="text-sm text-gray-500">Self-Consumption Rate</p></div><div><p class="text-2xl font-bold text-green-600">${formatNumber(selfSufficiencyRate, 1)}%</p><p class="text-sm text-gray-500">Self-Sufficiency Rate</p></div></div>
+                    </div>
+                    <div class="mb-4"><h3 class="text-xl font-semibold mb-2">Financial Analysis</h3>
+                        <div class="grid grid-cols-2 gap-4"><div><p class="text-2xl font-bold text-emerald-600">${formatCurrency(fin.lcos, ' $/MWh')}</p><p class="text-sm text-gray-500">LCOS</p></div><div><p class="text-2xl font-bold text-green-600">${isFinite(fin.simple_payback) ? formatNumber(fin.simple_payback, 1) + ' yrs' : 'N/A'}</p><p class="text-sm text-gray-500">Return on Investment</p></div><div><p class="text-2xl font-bold text-gray-800">${formatNumber(fin.N_op, 1)} yrs</p><p class="text-sm text-gray-500">Lifetime</p></div><div><p class="text-2xl font-bold text-gray-800">${formatNumber(fin.annual_cycles, 0)} cycles/yr</p><p class="text-sm text-gray-500">Equivalent Cycles</p></div></div>
+                    </div>`;
+            }
+
+            function updateAndDisplayWeeklyChart() {
+                if (!lastResults) return;
+                const weekValue = weekSelector.value; 
+                if (!weekValue) return;
+
+                const weekNumber = parseInt(weekValue.split('-W')[1], 10);
+                const startHour = (weekNumber - 1) * 168;
+                if (startHour + 168 > lastResults.simResults.hourly.soc.length) return;
+
+                const chartData = {};
+                for (const key in lastResults.simResults.hourly) {
+                    chartData[key] = lastResults.simResults.hourly[key].slice(startHour, startHour + 168);
+                }
+                displayWeeklyOverviewChart(chartData, startHour);
+            }
+
+            function displayWeeklyOverviewChart(weeklyData, startHourOffset) {
+                if (!weeklyData) return;
+
+                const labels = [];
+                const startDate = new Date('2025-01-01T00:00:00');
+                for (let i = 0; i < 168; i++) {
+                    labels.push(new Date(startDate.getTime() + (startHourOffset + i) * 3600 * 1000));
+                }
+                
+                const chargeData = weeklyData.batteryCharge.map(c => -c);
+
+                const allEnergyValues = [ ...weeklyData.cons, ...weeklyData.prod, ...chargeData, ...weeklyData.batteryDischarge ];
+                const maxEnergy = Math.max(0, ...allEnergyValues);
+                const minEnergy = Math.min(0, ...allEnergyValues);
+                const energyAxisMax = Math.ceil(maxEnergy * 1.1 / 10) * 10;
+                const energyAxisMin = Math.floor(minEnergy * 1.1 / 10) * 10;
+                let socAxisMin = 0;
+                if (energyAxisMax > 0 && energyAxisMin < 0) {
+                    socAxisMin = (100 * energyAxisMin) / energyAxisMax;
+                }
+
+                if (charts.weeklyOverview) charts.weeklyOverview.destroy();
+                charts.weeklyOverview = new Chart(document.getElementById('weekly_overview_chart').getContext('2d'), {
+                    type: 'bar',
+                    data: {
+                        labels: labels,
+                        datasets: [
+                            { label: 'Consumption (MWh)', data: weeklyData.cons, type: 'line', borderColor: 'black', borderWidth: 2, pointRadius: 0, order: 0 },
+                            { label: 'PV Production (MWh)', data: weeklyData.prod, type: 'line', borderColor: '#facc15', borderWidth: 2, pointRadius: 0, order: 1 },
+                            { label: 'Battery Charge (MWh)', data: chargeData, backgroundColor: 'rgba(239, 68, 68, 0.7)', order: 3 },
+                            { label: 'Battery Discharge (MWh)', data: weeklyData.batteryDischarge, backgroundColor: 'rgba(54, 162, 235, 0.7)', order: 4 },
+                            { label: 'SOC (%)', data: weeklyData.soc, type: 'line', borderColor: '#059669', yAxisID: 'y1', pointRadius: 0, borderWidth: 2, order: 2 }
+                        ]
+                    },
+                    options: {
+                        responsive: true, maintainAspectRatio: false, interaction: { intersect: false, mode: 'index' },
+                        scales: {
+                            x: { type: 'time', time: { unit: 'day' }, title: { display: true, text: 'Day of the week' } },
+                            y: { title: { display: true, text: 'Energy (MWh)' }, min: energyAxisMin, max: energyAxisMax },
+                            y1: { type: 'linear', position: 'right', title: { display: true, text: 'SOC (%)' }, grid: { drawOnChartArea: false }, min: socAxisMin, max: 100 }
+                        },
+                        plugins: {
+                            tooltip: {
+                                callbacks: {
+                                    label: function(context) {
+                                        let label = context.dataset.label || '';
+                                        if (label) { label += ': '; }
+                                        if (context.parsed.y !== null) {
+                                            let value = context.dataset.label.includes('Charge') ? -context.parsed.y : context.parsed.y;
+                                            let unit = label.includes('%') ? ' %' : ' MWh';
+                                            label += formatNumber(value, 3) + unit;
+                                        }
+                                        return label;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+            
+            // --- Other Functions ---
+            function displayEnergyFlowChart(sim) { const ctx = document.getElementById('energy_flow_chart').getContext('2d'); const losses = sim.totals.charge - sim.totals.discharge; if(charts.flow) charts.flow.destroy(); charts.flow = new Chart(ctx, { type: 'bar', data: { labels: ['PV Production', 'Total Consumption', 'Grid Import', 'Grid Export', 'Battery Charge', 'Battery Discharge', 'Battery Losses'], datasets: [{ label: 'Annual Energy (MWh)', data: [sim.totals.production, sim.totals.consumption, sim.totals.import, sim.totals.export, sim.totals.charge, sim.totals.discharge, losses], backgroundColor: ['rgba(16, 185, 129, 0.7)', 'rgba(249, 115, 22, 0.7)', 'rgba(255, 159, 64, 0.7)', 'rgba(75, 192, 192, 0.7)', 'rgba(59, 130, 246, 0.7)', 'rgba(239, 68, 68, 0.7)', 'rgba(156, 163, 175, 0.7)'], }] }, options: { responsive: true, plugins: { legend: { display: false }, title: { display: true, text: 'Annual Energy Flow Balance (MWh)' } }, scales: { y: { beginAtZero: true, title: { display: true, text: 'Energy (MWh)' } } } } }); }
+            function displayCalculationDetails(inputs, r) { const P_cap_MW_total = r.P_cap_MW; const E_cap_MWh_total = r.E_cap_MWh; document.getElementById('calculation_details').innerHTML = `<div class="calc-step"><h3 class="calc-title">1. Initial Investment (CAPEX)</h3><p class="text-sm mb-2">Based on ${inputs.number_of_batteries} unit(s)</p><p class="calc-formula">(${formatCurrency(inputs.investment_power, '$/MW')} * ${formatNumber(P_cap_MW_total, 2)} MW) + (${formatCurrency(inputs.investment_energy, '$/MWh')} * ${formatNumber(E_cap_MWh_total, 2)} MWh) = <span class="calc-value">${formatCurrency(r.initial_investment, '$')}</span></p></div><div class="calc-step"><h3 class="calc-title">2. Total Discounted Cost</h3><p class="calc-formula">CAPEX + Σ(O&M) + Σ(Charging) - End of Life = <span class="calc-value">${formatCurrency(r.total_discounted_cost, '$')}</span></p></div><div class="calc-step"><h3 class="calc-title">3. Total Discounted Energy Out</h3><p class="calc-formula">Σ(Discounted Annual Discharge) = <span class="calc-value">${formatNumber(r.total_discounted_energy_out, 0)} MWh</span></p></div><div class="calc-step"><h3 class="calc-title">4. LCOS</h3><p class="calc-formula">Total Discounted Cost / Total Energy Out = <span class="calc-value">${formatCurrency(r.lcos, '$/MWh')}</span></p></div><div class="calc-step"><h3 class="calc-title">5. Operational Lifetime (N_op)</h3><p class="calc-formula">Calculated at ${formatNumber(r.annual_cycles,0)} cycles/yr: <span class="calc-value">${formatNumber(r.N_op, 1)} years</span></p></div>`; }
+            function populateTechInputs(techKey) { const data = techData[techKey]; if (data) { Object.keys(data).forEach(key => { const el = document.getElementById(key.replace(/_([a-z])/g, g => g[1].toUpperCase())); if (el) el.value = data[key]; }); document.getElementById('investment_power').value = data.investment_power; document.getElementById('investment_energy').value = data.investment_energy; document.getElementById('round_trip_efficiency').value = data.round_trip_efficiency; document.getElementById('depth_of_discharge').value = data.depth_of_discharge; document.getElementById('cycle_lifetime').value = data.cycle_lifetime; document.getElementById('temporal_degradation').value = data.temporal_degradation; document.getElementById('eol_threshold').value = data.eol_threshold; document.getElementById('om_power').value = data.om_power; document.getElementById('eol_cost_energy').value = data.eol_cost_energy; }}
+            function runComparativeAnalysis() { if (profileData.length === 0) { showModal("Please load a CSV profile first."); return; } const currentInputs = getInputs(); const labels = [], lcosValues = [], paybackValues = []; for (const techKey in techData) { const tempInputs = { ...currentInputs, ...techData[techKey], discharge_duration: currentInputs.discharge_duration, number_of_batteries: currentInputs.number_of_batteries }; const systemInputs = {...tempInputs, power_capacity: tempInputs.power_capacity * tempInputs.number_of_batteries}; const simResults = runProfileSimulation(systemInputs, profileData); const financialResults = runFinancialCalculation(systemInputs, simResults); labels.push(techData[techKey].name); lcosValues.push(financialResults.lcos); paybackValues.push(isFinite(financialResults.simple_payback) ? financialResults.simple_payback : null); } document.getElementById('comparative_results_container').classList.remove('hidden'); if(charts.comparative) charts.comparative.destroy(); charts.comparative = new Chart(document.getElementById('comparative_chart').getContext('2d'), { type: 'bar', data: { labels, datasets: [ { label: 'LCOS ($/MWh)', data: lcosValues, backgroundColor: 'rgba(5, 150, 105, 0.7)' }, { label: 'ROI (years)', data: paybackValues, backgroundColor: 'rgba(52, 211, 153, 0.7)' } ]}, options: { responsive: true, plugins: { title: { display: true, text: 'LCOS and ROI Comparison' } }, scales: { y: { beginAtZero: true, title: { display: true, text: 'Value' } } } } }); }
+            function runOptimization() { if (profileData.length === 0) { showModal("Please load a CSV profile first."); return; } const minCap = parseFloat(document.getElementById('optim_min_cap').value); const maxCap = parseFloat(document.getElementById('optim_max_cap').value); const step = parseFloat(document.getElementById('optim_step').value); if (isNaN(minCap) || isNaN(maxCap) || isNaN(step) || minCap <= 0 || step <= 0 || minCap > maxCap) { showModal("Invalid optimization values."); return; } const currentInputs = getInputs(); const capacities = [], lcosValues = [], paybackValues = []; let bestLCOS = Infinity, bestCapacity = 0; for (let cap = minCap; cap <= maxCap; cap += step) { const tempInputs = { ...currentInputs, power_capacity: (cap / currentInputs.discharge_duration) / currentInputs.number_of_batteries }; const systemInputs = {...tempInputs, power_capacity: tempInputs.power_capacity * tempInputs.number_of_batteries }; const simResults = runProfileSimulation(systemInputs, profileData); const financialResults = runFinancialCalculation(systemInputs, simResults); capacities.push(cap); lcosValues.push(financialResults.lcos); paybackValues.push(isFinite(financialResults.simple_payback) ? financialResults.simple_payback : null); if (financialResults.lcos < bestLCOS && financialResults.lcos > 0) { bestLCOS = financialResults.lcos; bestCapacity = cap; } } document.getElementById('optimization_results_container').classList.remove('hidden'); document.getElementById('optimization_summary').textContent = `Optimal LCOS: ${formatNumber(bestCapacity, 1)} MWh with ${formatCurrency(bestLCOS, ' $/MWh')}.`; if(charts.optimization) charts.optimization.destroy(); charts.optimization = new Chart(document.getElementById('optimization_chart').getContext('2d'), { type: 'line', data: { labels: capacities.map(c => `${c} MWh`), datasets: [ { label: 'LCOS ($/MWh)', data: lcosValues, borderColor: 'rgb(5, 150, 105)', yAxisID: 'y' }, { label: 'ROI (years)', data: paybackValues, borderColor: 'rgb(16, 185, 129)', yAxisID: 'y1' } ]}, options: { responsive: true, plugins: { title: { display: true, text: 'Battery Size Optimization' } }, scales: { x: { title: { display: true, text: 'Energy Capacity (MWh)' } }, y: { type: 'linear', display: true, position: 'left', title: { display: true, text: 'LCOS ($/MWh)' } }, y1: { type: 'linear', display: true, position: 'right', title: { display: true, text: 'ROI (years)' }, grid: { drawOnChartArea: false } } } } }); }
+            
+            function downloadReport() { 
+                if (!lastResults) { showModal("Please run a simulation before downloading."); return; } 
+                const { inputs, simResults, financialResults } = lastResults; 
+                const summary_ws_data = [ ["Simulation Report"], [], ["Parameters"], ["Technology", techData[inputs.technology_selector].name], ["Number of batteries", inputs.number_of_batteries], ["PV Peak Power (MWp)", inputs.pv_peak_power], ["Total Nominal Power (MW)", financialResults.P_cap_MW], ["Discharge Duration (hours)", inputs.discharge_duration], ["Total Energy Capacity (MWh)", financialResults.E_cap_MWh], [], ["Annual Balance"], ["PV Production (MWh)", simResults.totals.production], ["Consumption (MWh)", simResults.totals.consumption], ["Grid Import (MWh)", simResults.totals.import], ["Grid Export (MWh)", simResults.totals.export], ["Self-Consumption Rate (%)", (simResults.totals.direct + simResults.totals.discharge) / simResults.totals.production * 100], ["Self-Sufficiency Rate (%)", (simResults.totals.direct + simResults.totals.discharge) / simResults.totals.consumption * 100], [], ["Financial Analysis"], ["Initial Investment ($)", financialResults.initial_investment], ["Lifetime (years)", financialResults.N_op], ["Annual Cycles", financialResults.annual_cycles], ["LCOS ($/MWh)", financialResults.lcos], ["Return on Investment (years)", isFinite(financialResults.simple_payback) ? financialResults.simple_payback : "N/A"] ]; 
+                const hourly_ws_data = [ 
+                    ["Annual Hourly Profile"], 
+                    ["Hour", "Production (MWh)", "Consumption (MWh)", "SOC (%)", "Battery Charge (MWh)", "Battery Discharge (MWh)", "Grid Import (MWh)", "Grid Export (MWh)", "Financial Balance ($)"] 
+                ]; 
+                const startDate = new Date('2025-01-01T00:00:00'); 
+                for (let i = 0; i < simResults.hourly.prod.length; i++) { 
+                    const timestamp = new Date(startDate.getTime() + i * 60 * 60 * 1000); 
+                    hourly_ws_data.push([ 
+                        timestamp.toISOString(), 
+                        simResults.hourly.prod[i], 
+                        simResults.hourly.cons[i], 
+                        simResults.hourly.soc[i], 
+                        simResults.hourly.batteryCharge[i], 
+                        simResults.hourly.batteryDischarge[i], 
+                        simResults.hourly.gridImport[i], 
+                        simResults.hourly.gridExport[i], 
+                        simResults.hourly.hourlyNetCost[i] 
+                    ]); 
+                } 
+                const wb = XLSX.utils.book_new(); 
+                const ws_summary = XLSX.utils.aoa_to_sheet(summary_ws_data); 
+                const ws_hourly = XLSX.utils.aoa_to_sheet(hourly_ws_data); 
+                XLSX.utils.book_append_sheet(wb, ws_summary, "Summary Report"); 
+                XLSX.utils.book_append_sheet(wb, ws_hourly, "Annual Hourly Data"); 
+                XLSX.writeFile(wb, "Industrial_Energy_Storage_Report.xlsx"); 
+            }
+
+            // --- EVENT LISTENERS ---
+            techSelector.addEventListener('change', (e) => populateTechInputs(e.target.value));
+            calculateButton.addEventListener('click', calculateAndShowResults);
+            weekSelector.addEventListener('change', updateAndDisplayWeeklyChart);
+            downloadButton.addEventListener('click', downloadReport);
+            profileUploader.addEventListener('change', handleProfileFile);
+            optimizeButton.addEventListener('click', runOptimization);
+            compareButton.addEventListener('click', runComparativeAnalysis);
+            document.querySelectorAll('.tab-button').forEach(button => { button.addEventListener('click', () => { document.querySelectorAll('.tab-button, .tab-content').forEach(el => el.classList.remove('active')); button.classList.add('active'); document.getElementById(button.dataset.tab).classList.add('active'); }); });
+
+            populateTechInputs(techSelector.value);
+            weekSelector.disabled = true;
+        });
+    </script>
+</body>
+</html>

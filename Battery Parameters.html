@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Optimisation OCP PV | Parameters</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .calculator-card {
+            background-color: #FFFFFF; /* white */
+            border: 1px solid #E5E7EB; /* gray-200 */
+            border-radius: 0.75rem; /* rounded-xl */
+            padding: 1.5rem; /* p-6 */
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.07), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            transition: transform 0.2s ease-in-out;
+        }
+        .calculator-card:hover {
+            transform: translateY(-5px);
+        }
+        .input-group {
+            margin-bottom: 1rem;
+        }
+        .input-label {
+            display: block;
+            color: #4B5563; /* gray-600 */
+            margin-bottom: 0.5rem;
+            font-size: 0.875rem; /* text-sm */
+            font-weight: 500;
+        }
+        .input-field {
+            width: 100%;
+            background-color: #F9FAFB; /* gray-50 */
+            border: 1px solid #D1D5DB; /* gray-300 */
+            color: #111827; /* gray-900 */
+            border-radius: 0.5rem; /* rounded-lg */
+            padding: 0.75rem;
+            font-size: 1rem;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+        .input-field:focus {
+            outline: none;
+            border-color: #10B981; /* green-500 */
+            box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.5);
+        }
+        .calc-button {
+            width: 100%;
+            background-color: #059669; /* green-600 */
+            color: white;
+            font-weight: 600;
+            padding: 0.75rem;
+            border-radius: 0.5rem; /* rounded-lg */
+            transition: background-color 0.2s;
+            border: none;
+            cursor: pointer;
+        }
+        .calc-button:hover {
+            background-color: #047857; /* green-700 */
+        }
+        .link-button {
+            width: 100%;
+            background-color: #10B981; /* green-500 */
+            color: white;
+            font-weight: 600;
+            padding: 0.75rem;
+            border-radius: 0.5rem; /* rounded-lg */
+            transition: background-color 0.2s;
+            border: none;
+            cursor: pointer;
+            margin-top: 1rem;
+        }
+        .link-button:hover {
+             background-color: #059669; /* green-600 */
+        }
+        .result-box {
+            margin-top: 1rem;
+            background-color: #F3F4F6; /* gray-100 */
+            padding: 1rem;
+            border-radius: 0.5rem; /* rounded-lg */
+            text-align: center;
+            border: 1px solid #E5E7EB; /* gray-200 */
+        }
+        .result-text {
+            color: #6B7280; /* gray-500 */
+            font-size: 1rem;
+        }
+        .result-value {
+            color: #047857; /* green-700 */
+            font-size: 1.875rem; /* text-3xl */
+            font-weight: 700;
+            margin-top: 0.25rem;
+        }
+    </style>
+</head>
+<body class="bg-gray-50 text-gray-800 min-h-screen p-4 sm:p-8">
+
+    <div class="max-w-7xl mx-auto">
+        <header class="text-center mb-10">
+            <h1 class="text-4xl sm:text-5xl font-bold text-gray-900">Battery Parameter Calculator</h1>
+            <p class="mt-4 text-lg text-gray-600">Calculate efficiency, state of charge, state of health, depth of discharge, and analyze profitability.</p>
+        </header>
+
+        <main class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-8">
+
+            <!-- Overall Efficiency (RTE) Calculator -->
+            <div class="calculator-card">
+                <h2 class="text-2xl font-semibold mb-4 text-gray-900">Overall Efficiency (RTE)</h2>
+                <div class="input-group">
+                    <label for="eta_battery" class="input-label">η battery (e.g., 0.95)</label>
+                    <input type="number" id="eta_battery" class="input-field" value="0.95" step="0.01">
+                </div>
+                <div class="input-group">
+                    <label for="eta_pcs" class="input-label">η PCS (e.g., 0.96)</label>
+                    <input type="number" id="eta_pcs" class="input-field" value="0.96" step="0.01">
+                </div>
+                <div class="input-group">
+                    <label for="eta_transfo" class="input-label">η transformer (e.g., 0.99)</label>
+                    <input type="number" id="eta_transfo" class="input-field" value="0.99" step="0.01">
+                </div>
+                <div class="input-group">
+                    <label for="eta_cables" class="input-label">η cables (e.g., 0.99)</label>
+                    <input type="number" id="eta_cables" class="input-field" value="0.99" step="0.01">
+                </div>
+                <button id="calc_rte" class="calc-button">Calculate RTE</button>
+                <div class="result-box">
+                    <p class="result-text">Overall Efficiency (η_RT)</p>
+                    <p id="result_rte" class="result-value">-</p>
+                </div>
+            </div>
+
+            <!-- State of Charge (SOC) Calculator -->
+            <div class="calculator-card">
+                <h2 class="text-2xl font-semibold mb-4 text-gray-900">State of Charge (SOC)</h2>
+                <div class="input-group">
+                    <label for="soc_previous" class="input-label">SOC(t-1) (%)</label>
+                    <input type="number" id="soc_previous" class="input-field" value="50">
+                </div>
+                <div class="input-group">
+                    <label for="current" class="input-label">Current I(t) (A) - (negative for discharge)</label>
+                    <input type="number" id="current" class="input-field" value="20">
+                </div>
+                <div class="input-group">
+                    <label for="delta_t" class="input-label">Time interval Δt (hours)</label>
+                    <input type="number" id="delta_t" class="input-field" value="1">
+                </div>
+                <div class="input-group">
+                    <label for="capacity_nominal" class="input-label">Nominal capacity C_nominal (Ah)</label>
+                    <input type="number" id="capacity_nominal" class="input-field" value="100">
+                </div>
+                <button id="calc_soc" class="calc-button">Calculate SOC</button>
+                <div class="result-box">
+                    <p class="result-text">State of Charge SOC(t)</p>
+                    <p id="result_soc" class="result-value">-</p>
+                </div>
+            </div>
+
+            <!-- State of Health (SOH) Calculator -->
+            <div class="calculator-card">
+                <h2 class="text-2xl font-semibold mb-4 text-gray-900">State of Health (SOH)</h2>
+                <div class="input-group">
+                    <label for="current_capacity" class="input-label">Current capacity (Ah)</label>
+                    <input type="number" id="current_capacity" class="input-field" value="95">
+                </div>
+                <div class="input-group">
+                    <label for="initial_capacity" class="input-label">Initial capacity (Ah)</label>
+                    <input type="number" id="initial_capacity" class="input-field" value="100">
+                </div>
+                <button id="calc_soh" class="calc-button">Calculate SOH</button>
+                <div class="result-box">
+                    <p class="result-text">State of Health (SOH)</p>
+                    <p id="result_soh" class="result-value">-</p>
+                </div>
+            </div>
+
+            <!-- Depth of Discharge (DoD) Calculator -->
+            <div class="calculator-card">
+                <h2 class="text-2xl font-semibold mb-4 text-gray-900">Depth of Discharge (DoD)</h2>
+                <div class="input-group">
+                    <label for="soc_for_dod" class="input-label">State of Charge (SOC) (%)</label>
+                    <input type="number" id="soc_for_dod" class="input-field" value="20">
+                </div>
+                <button id="calc_dod" class="calc-button">Calculate DoD</button>
+                <div class="result-box">
+                    <p class="result-text">Depth of Discharge (DoD)</p>
+                    <p id="result_dod" class="result-value">-</p>
+                </div>
+            </div>
+            
+            <!-- Annual Energy Calculator -->
+            <div class="calculator-card md:col-span-2">
+                <h2 class="text-2xl font-semibold mb-4 text-gray-900">Charged & Discharged Energy (Year 1)</h2>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-x-6">
+                    <div>
+                         <div class="input-group">
+                            <label for="annual_capacity" class="input-label">Capacity (kWh)</label>
+                            <input type="number" id="annual_capacity" class="input-field" value="40000">
+                        </div>
+                        <div class="input-group">
+                            <label for="annual_dod" class="input-label">DoD (%)</label>
+                            <input type="number" id="annual_dod" class="input-field" value="80">
+                        </div>
+                         <div class="input-group">
+                            <label for="annual_cycles" class="input-label">Cycles (per year)</label>
+                            <input type="number" id="annual_cycles" class="input-field" value="300">
+                        </div>
+                    </div>
+                    <div>
+                        <div class="input-group">
+                            <label for="annual_rte" class="input-label">RTE (%)</label>
+                            <input type="number" id="annual_rte" class="input-field" value="86">
+                        </div>
+                        <div class="input-group">
+                            <label for="annual_self_discharge" class="input-label">Total Self-Discharge (%)</label>
+                            <input type="number" id="annual_self_discharge" class="input-field" value="1">
+                        </div>
+                    </div>
+                </div>
+                <button id="calc_annual_energy" class="calc-button">Calculate Annual Energy</button>
+                <div class="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div class="result-box">
+                        <p class="result-text">Energy In (Ein)</p>
+                        <p id="result_ein" class="result-value">-</p>
+                    </div>
+                    <div class="result-box">
+                        <p class="result-text">Energy Out (Eout)</p>
+                        <p id="result_eout" class="result-value">-</p>
+                    </div>
+                </div>
+                <button id="use_annual_values_button" class="link-button">Use for Economic Analysis</button>
+            </div>
+
+            <!-- Economic Analysis Calculator -->
+            <div class="calculator-card md:col-span-2">
+                <h2 class="text-2xl font-semibold mb-4 text-gray-900">Economic Analysis</h2>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-x-6">
+                    <div>
+                        <div class="input-group">
+                            <label for="ein_eco" class="input-label">Energy In (Ein) (kWh)</label>
+                            <input type="number" id="ein_eco" class="input-field" value="100">
+                        </div>
+                        <div class="input-group">
+                            <label for="cost_in" class="input-label">Purchase Cost ($/kWh)</label>
+                            <input type="number" id="cost_in" class="input-field" value="0.15" step="0.01">
+                        </div>
+                    </div>
+                    <div>
+                        <div class="input-group">
+                            <label for="eout_eco" class="input-label">Energy Out (Eout) (kWh)</label>
+                            <input type="number" id="eout_eco" class="input-field" value="90">
+                        </div>
+                        <div class="input-group">
+                            <label for="cost_out" class="input-label">Sale Revenue ($/kWh)</label>
+                            <input type="number" id="cost_out" class="input-field" value="0.25" step="0.01">
+                        </div>
+                    </div>
+                </div>
+                <button id="calc_eco" class="calc-button mt-2">Calculate & Analyze</button>
+                <div class="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div class="result-box">
+                        <p class="result-text">Total Purchase Cost</p>
+                        <p id="result_cost_in" class="result-value">-</p>
+                    </div>
+                    <div class="result-box">
+                        <p class="result-text">Total Sale Revenue</p>
+                        <p id="result_cost_out" class="result-value">-</p>
+                    </div>
+                    <div class="result-box">
+                        <p class="result-text">Profit / Loss</p>
+                        <p id="result_profit" class="result-value">-</p>
+                    </div>
+                </div>
+                <div class="result-box mt-4">
+                       <p class="result-text font-semibold">Profitability Analysis</p>
+                       <p id="analysis_text" class="text-md mt-2 text-gray-800">-</p>
+                </div>
+            </div>
+
+        </main>
+    </div>
+
+    <script>
+        // Function to validate that inputs are valid numbers
+        function getNumericValue(id) {
+            const value = document.getElementById(id).value;
+            return parseFloat(value);
+        }
+
+        // Overall Efficiency (RTE) Calculator
+        document.getElementById('calc_rte').addEventListener('click', () => {
+            const eta_battery = getNumericValue('eta_battery');
+            const eta_pcs = getNumericValue('eta_pcs');
+            const eta_transfo = getNumericValue('eta_transfo');
+            const eta_cables = getNumericValue('eta_cables');
+            
+            if (isNaN(eta_battery) || isNaN(eta_pcs) || isNaN(eta_transfo) || isNaN(eta_cables)) {
+                document.getElementById('result_rte').textContent = 'Error';
+                return;
+            }
+
+            const rte = eta_battery * Math.pow(eta_pcs, 2) * Math.pow(eta_transfo, 2) * Math.pow(eta_cables, 2);
+            const rte_percent = (rte * 100).toFixed(2);
+            
+            document.getElementById('result_rte').textContent = `${rte_percent} %`;
+        });
+
+        // State of Charge (SOC) Calculator
+        document.getElementById('calc_soc').addEventListener('click', () => {
+            const soc_previous = getNumericValue('soc_previous');
+            const current = getNumericValue('current');
+            const delta_t = getNumericValue('delta_t');
+            const capacity_nominal = getNumericValue('capacity_nominal');
+
+            if (isNaN(soc_previous) || isNaN(current) || isNaN(delta_t) || isNaN(capacity_nominal) || capacity_nominal <= 0) {
+                document.getElementById('result_soc').textContent = 'Error';
+                return;
+            }
+
+            const soc_change_percent = (current * delta_t / capacity_nominal) * 100;
+            let soc_t = soc_previous + soc_change_percent;
+
+            soc_t = Math.max(0, Math.min(100, soc_t));
+            
+            document.getElementById('result_soc').textContent = `${soc_t.toFixed(2)} %`;
+        });
+
+        // State of Health (SOH) Calculator
+        document.getElementById('calc_soh').addEventListener('click', () => {
+            const current_capacity = getNumericValue('current_capacity');
+            const initial_capacity = getNumericValue('initial_capacity');
+
+            if (isNaN(current_capacity) || isNaN(initial_capacity) || initial_capacity <= 0) {
+                document.getElementById('result_soh').textContent = 'Error';
+                return;
+            }
+
+            const soh = (current_capacity / initial_capacity) * 100;
+            
+            document.getElementById('result_soh').textContent = `${soh.toFixed(2)} %`;
+        });
+
+        // Depth of Discharge (DoD) Calculator
+        document.getElementById('calc_dod').addEventListener('click', () => {
+            const soc = getNumericValue('soc_for_dod');
+
+            if (isNaN(soc)) {
+                document.getElementById('result_dod').textContent = 'Error';
+                return;
+            }
+            
+            const dod = 100 - soc;
+            
+            document.getElementById('result_dod').textContent = `${dod.toFixed(2)} %`;
+        });
+
+        // Annual Energy Calculator
+        document.getElementById('calc_annual_energy').addEventListener('click', () => {
+            const capacity = getNumericValue('annual_capacity');
+            const dod = getNumericValue('annual_dod');
+            const cycles = getNumericValue('annual_cycles');
+            const rte = getNumericValue('annual_rte');
+            const selfDischarge = getNumericValue('annual_self_discharge');
+
+            const resultEinEl = document.getElementById('result_ein');
+            const resultEoutEl = document.getElementById('result_eout');
+
+            if (isNaN(capacity) || isNaN(dod) || isNaN(cycles) || isNaN(rte) || isNaN(selfDischarge) || rte <= 0) {
+                resultEinEl.textContent = 'Error';
+                resultEoutEl.textContent = 'Error';
+                return;
+            }
+            
+            const dod_decimal = dod / 100;
+            const rte_decimal = rte / 100;
+            const self_discharge_decimal = selfDischarge / 100;
+
+            const ein = (capacity * dod_decimal * cycles) / rte_decimal;
+            const eout = ein * rte_decimal * (1 - self_discharge_decimal);
+
+            resultEinEl.textContent = `${ein.toLocaleString('en-US', { maximumFractionDigits: 0 })} kWh`;
+            resultEoutEl.textContent = `${eout.toLocaleString('en-US', { maximumFractionDigits: 0 })} kWh`;
+
+            // Store raw values for transfer
+            resultEinEl.dataset.rawValue = ein;
+            resultEoutEl.dataset.rawValue = eout;
+        });
+
+        // Button to link calculators
+        document.getElementById('use_annual_values_button').addEventListener('click', () => {
+            const einRawValue = document.getElementById('result_ein').dataset.rawValue;
+            const eoutRawValue = document.getElementById('result_eout').dataset.rawValue;
+
+            if (einRawValue && eoutRawValue) {
+                document.getElementById('ein_eco').value = parseFloat(einRawValue).toFixed(0);
+                document.getElementById('eout_eco').value = parseFloat(eoutRawValue).toFixed(0);
+            } else {
+                alert("Please calculate the annual energy first.");
+            }
+        });
+
+
+        // Economic Analysis Calculator
+        document.getElementById('calc_eco').addEventListener('click', () => {
+            const ein = getNumericValue('ein_eco');
+            const cost_in = getNumericValue('cost_in');
+            const eout = getNumericValue('eout_eco');
+            const cost_out = getNumericValue('cost_out');
+
+            if (isNaN(ein) || isNaN(cost_in) || isNaN(eout) || isNaN(cost_out)) {
+                document.getElementById('result_cost_in').textContent = 'Error';
+                document.getElementById('result_cost_out').textContent = 'Error';
+                document.getElementById('result_profit').textContent = 'Error';
+                document.getElementById('analysis_text').textContent = 'Please enter valid numerical values.';
+                return;
+            }
+
+            const totalCostIn = ein * cost_in;
+            const totalRevenueOut = eout * cost_out;
+            const profit = totalRevenueOut - totalCostIn;
+
+            document.getElementById('result_cost_in').textContent = `$ ${totalCostIn.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+            document.getElementById('result_cost_out').textContent = `$ ${totalRevenueOut.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+            
+            const profitElement = document.getElementById('result_profit');
+            profitElement.textContent = `$ ${profit.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
+            const analysisElement = document.getElementById('analysis_text');
+            if (profit > 0) {
+                profitElement.style.color = '#10B981'; // green-500
+                analysisElement.textContent = `The operation is profitable, with a gain of $${profit.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}. The sale revenue exceeds the purchase cost.`;
+            } else if (profit < 0) {
+                profitElement.style.color = '#EF4444'; // red-500
+                analysisElement.textContent = `The operation is not profitable, with a loss of $${Math.abs(profit).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}. The purchase cost is higher than the sale revenue.`;
+            } else {
+                profitElement.style.color = '#6B7280'; // gray-500
+                analysisElement.textContent = "The operation is at break-even. The purchase cost equals the sale revenue.";
+            }
+        });
+
+    </script>
+</body>
+</html>
