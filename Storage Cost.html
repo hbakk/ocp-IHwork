@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Optimisation OCP PV | Storage Cost</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .input-group {
+            display: flex;
+            align-items: center;
+            margin-bottom: 0.75rem;
+        }
+        .input-group label {
+            flex: 1;
+            margin-right: 1rem;
+            font-size: 0.875rem;
+            color: #4B5563;
+        }
+        .input-group .input-container {
+            flex: 1;
+            display: flex;
+            align-items: center;
+        }
+        .input-group input, .input-group select {
+            width: 100%;
+            padding: 0.5rem;
+            border-radius: 0.375rem;
+            border: 1px solid #D1D5DB;
+        }
+        .input-group input {
+            text-align: right;
+        }
+        .input-group .unit {
+            margin-left: 0.5rem;
+            font-size: 0.875rem;
+            color: #6B7280;
+            min-width: 60px;
+        }
+        .calc-step {
+            margin-bottom: 1.5rem;
+            padding-bottom: 1.5rem;
+            border-bottom: 1px solid #E5E7EB;
+        }
+        .calc-step:last-child {
+            border-bottom: none;
+            padding-bottom: 0;
+        }
+        .calc-title {
+            font-size: 1.125rem;
+            font-weight: 600;
+            color: #1F2937;
+            margin-bottom: 0.5rem;
+        }
+        .calc-formula {
+            font-family: monospace;
+            background-color: #F3F4F6;
+            padding: 0.75rem;
+            border-radius: 0.375rem;
+            color: #374151;
+            font-size: 0.9rem;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            line-height: 1.5;
+        }
+        .calc-value {
+            font-weight: 700;
+            color: #4F46E5;
+        }
+    </style>
+</head>
+
+
+<body class="bg-gray-50 text-gray-800">
+
+    <div class="container mx-auto p-4 md:p-8">
+        <header class="text-center mb-8">
+            <h1 class="text-3xl md:text-4xl font-bold text-gray-900">Energy Storage Cost Calculator</h1>
+        </header>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <!-- Column 1: Inputs -->
+            <div class="lg:col-span-1 bg-white p-6 rounded-lg shadow-lg">
+                <h2 class="text-2xl font-bold mb-6 border-b pb-4">Parameters</h2>
+                
+                <div class="mb-6">
+                    <label for="technology_selector" class="block text-lg font-semibold mb-3 text-indigo-700">Technology:</label>
+                    <select id="technology_selector" class="w-full bg-gray-100 border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                        <option value="lithium_ion">Lithium-ion Battery (Utility)</option>
+                        <option value="vanadium_flow">Vanadium Flow Battery</option>
+                        <option value="pumped_hydro">Pumped Hydro Storage (PHES)</option>
+                    </select>
+                </div>
+                <div class="mb-6">
+                    <h3 class="text-lg font-semibold mb-3">Technology Costs</h3>
+                    <div class="input-group"><label for="investment_power">Inv. Cost - Power</label><div class="input-container"><input type="number" id="investment_power"><span class="unit">$/kW</span></div></div>
+                    <div class="input-group"><label for="investment_energy">Inv. Cost - Energy</label><div class="input-container"><input type="number" id="investment_energy"><span class="unit">$/kWh</span></div></div>
+                </div>
+                <div class="mb-6">
+                    <h3 class="text-lg font-semibold mb-3">Application</h3>
+                    <div class="input-group"><label for="power_capacity">Nominal Power</label><div class="input-container"><input type="number" id="power_capacity" value="10"><span class="unit">MW</span></div></div>
+                    <div class="input-group"><label for="discharge_duration">Discharge Duration</label><div class="input-container"><input type="number" id="discharge_duration" value="4"><span class="unit">hours</span></div></div>
+                    <div class="input-group"><label for="annual_cycles">Cycles per year</label><div class="input-container"><input type="number" id="annual_cycles" value="300"><span class="unit">cycles</span></div></div>
+                </div>
+                <div class="mb-6">
+                    <h3 class="text-lg font-semibold mb-3">Performance</h3>
+                    <div class="input-group"><label for="round_trip_efficiency">Round Trip Efficiency (RTE)</label><div class="input-container"><input type="number" id="round_trip_efficiency"><span class="unit">%</span></div></div>
+                    <div class="input-group"><label for="depth_of_discharge">Depth of Discharge (DoD)</label><div class="input-container"><input type="number" id="depth_of_discharge"><span class="unit">%</span></div></div>
+                    <div class="input-group"><label for="self_discharge">Self-Discharge</label><div class="input-container"><input type="number" id="self_discharge" step="0.1"><span class="unit">% / yr</span></div></div>
+                    <div class="input-group"><label for="cycle_lifetime">Cycle Lifetime</label><div class="input-container"><input type="number" id="cycle_lifetime"><span class="unit">cycles</span></div></div>
+                    <div class="input-group"><label for="temporal_degradation">Temporal Degradation</label><div class="input-container"><input type="number" id="temporal_degradation" step="0.01"><span class="unit">% / yr</span></div></div>
+                    <div class="input-group"><label for="eol_threshold">End-of-Life Threshold (SOH)</label><div class="input-container"><input type="number" id="eol_threshold"><span class="unit">%</span></div></div>
+                </div>
+                <div class="mb-6">
+                    <h3 class="text-lg font-semibold mb-3">Other Costs</h3>
+                    <div class="input-group"><label for="om_power">O&M - Power</label><div class="input-container"><input type="number" id="om_power"><span class="unit">$/kW-yr</span></div></div>
+                    <div class="input-group"><label for="om_energy">O&M - Energy</label><div class="input-container"><input type="number" id="om_energy"><span class="unit">$/MWh</span></div></div>
+                    <div class="input-group"><label for="charging_cost">Charging Cost</label><div class="input-container"><input type="number" id="charging_cost" value="50"><span class="unit">$/MWh</span></div></div>
+                    <div class="input-group"><label for="eol_cost_energy">End-of-Life Cost (value)</label><div class="input-container"><input type="number" id="eol_cost_energy"><span class="unit">$/kWh</span></div></div>
+                </div>
+                <div class="mb-6">
+                    <h3 class="text-lg font-semibold mb-3">Financial</h3>
+                    <div class="input-group"><label for="discount_rate">Discount Rate</label><div class="input-container"><input type="number" id="discount_rate" value="8"><span class="unit">%</span></div></div>
+                </div>
+                <div class="mt-8">
+                    <button id="calculate_button" class="w-full bg-indigo-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors duration-300">
+                        Run Calculation
+                    </button>
+                </div>
+            </div>
+
+            <!-- Column 2: Calculation Formulas -->
+            <div id="formulas_column" class="lg:col-span-1 bg-white p-6 rounded-lg shadow-lg hidden">
+                <h2 class="text-2xl font-bold mb-6 border-b pb-4">Calculation Details</h2>
+                <div id="calculation_details">
+                    <!-- Content will be generated by JavaScript -->
+                </div>
+            </div>
+            
+            <!-- Column 3: Final Results -->
+            <div id="summary_column" class="lg:col-span-1 bg-white p-6 rounded-lg shadow-lg hidden">
+                <h2 class="text-2xl font-bold mb-6 border-b pb-4">Results & Analysis</h2>
+                <div class="mb-6"><h3 class="text-xl font-semibold mb-2">Operational Lifetime</h3><p class="text-3xl font-bold text-indigo-600"><span id="lifetime_result"></span> years</p></div>
+                
+                <div id="performance_summary" class="mb-6">
+                     <!-- Content generated by JS -->
+                </div>
+
+                <!-- LCOS Section with chart -->
+                <div class="mb-8">
+                    <div class="flex justify-between items-baseline mb-3">
+                        <h3 class="text-xl font-semibold">LCOS</h3>
+                        <p class="text-2xl font-bold text-indigo-600" id="lcos_total"></p>
+                    </div>
+                    <div id="lcos_chart_container" class="mt-4 flex flex-col sm:flex-row items-center gap-6">
+                        <!-- LCOS chart and legend will be injected here -->
+                    </div>
+                </div>
+
+                <!-- ACC Section with chart -->
+                <div>
+                    <div class="flex justify-between items-baseline mb-3">
+                        <h3 class="text-xl font-semibold">ACC</h3>
+                        <p class="text-2xl font-bold text-indigo-600" id="acc_total"></p>
+                    </div>
+                    <div id="acc_chart_container" class="mt-4 flex flex-col sm:flex-row items-center gap-6">
+                         <!-- ACC chart and legend will be injected here -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const techData = {
+            'lithium_ion': { investment_power: 250, investment_energy: 300, om_power: 5, om_energy: 0.4, eol_cost_energy: 0, round_trip_efficiency: 86, depth_of_discharge: 80, self_discharge: 1, cycle_lifetime: 3500, temporal_degradation: 1, eol_threshold: 80 },
+            'vanadium_flow': { investment_power: 700, investment_energy: 450, om_power: 10, om_energy: 2, eol_cost_energy: -100, round_trip_efficiency: 68, depth_of_discharge: 100, self_discharge: 0, cycle_lifetime: 20000, temporal_degradation: 0.1, eol_threshold: 80 },
+            'pumped_hydro': { investment_power: 1100, investment_energy: 50, om_power: 20, om_energy: 0.4, eol_cost_energy: 0, round_trip_efficiency: 80, depth_of_discharge: 100, self_discharge: 0, cycle_lifetime: 30000, temporal_degradation: 0, eol_threshold: 95 }
+        };
+
+        const techSelector = document.getElementById('technology_selector');
+        const calculateButton = document.getElementById('calculate_button');
+        const formulasColumn = document.getElementById('formulas_column');
+        const summaryColumn = document.getElementById('summary_column');
+        const detailsContainer = document.getElementById('calculation_details');
+
+        techSelector.addEventListener('change', updateTechnologyForm);
+        calculateButton.addEventListener('click', calculateAndShowResults);
+
+        function updateTechnologyForm() {
+            const selectedTech = techSelector.value;
+            const data = techData[selectedTech];
+            for (const key in data) {
+                const element = document.getElementById(key);
+                if (element) element.value = data[key];
+            }
+            formulasColumn.classList.add('hidden');
+            summaryColumn.classList.add('hidden');
+        }
+
+        function formatNumber(value, decimals = 2) {
+            return value.toLocaleString('en-US', { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
+        }
+        
+        function formatCurrency(value, unit = '$') {
+             if (isNaN(value) || !isFinite(value)) return `N/A ${unit.trim()}`;
+             const sign = value < 0 ? '-' : '';
+             return `${sign}${formatNumber(Math.abs(value))}${unit.startsWith(' ') ? '' : ' '}${unit.trim()}`;
+        }
+        
+        /**
+         * Creates a doughnut chart and its legend.
+         * @param {object} shares - The percentages of each cost component.
+         * @param {object} values - The monetary values of each component.
+         * @param {string} currency - The monetary unit (e.g., '$/MWh').
+         * @returns {string} - The HTML for the chart and legend.
+         */
+        function createDoughnutChart(shares, values, currency) {
+            const data = [
+                { label: 'Investment', value: values.investment, share: shares.inv, color: '#0ea5e9' }, // sky-500
+                { label: 'O&M', value: values.om, share: shares.om, color: '#10b981' }, // emerald-500
+                { label: 'Charging', value: values.charging, share: shares.charging, color: '#f59e0b' }, // amber-500
+                { label: 'End of Life', value: values.eol, share: shares.eol, color: '#64748b' } // slate-500
+            ];
+
+            const radius = 40;
+            const strokeWidth = 20;
+            const viewBoxSize = 100;
+            const circumference = 2 * Math.PI * radius;
+            let offset = 0;
+
+            // Create SVG chart segments
+            const svg_segments = data.map(item => {
+                if (item.share <= 0) return ''; // Do not display null or negative segments
+                const dasharray = (item.share / 100) * circumference;
+                const segment = `
+                    <circle 
+                        cx="${viewBoxSize / 2}" cy="${viewBoxSize / 2}" r="${radius}" 
+                        fill="transparent" 
+                        stroke="${item.color}" 
+                        stroke-width="${strokeWidth}" 
+                        stroke-dasharray="${dasharray} ${circumference}" 
+                        transform="rotate(${(offset / 100 * 360) - 90} ${viewBoxSize / 2} ${viewBoxSize / 2})"
+                    />
+                `;
+                offset += item.share;
+                return segment;
+            }).join('');
+            
+            // Create HTML legend
+            const legend_html = data.map(item => `
+                <div class="flex items-center justify-between w-full">
+                    <div class="flex items-center">
+                        <div class="w-3 h-3 rounded-full mr-2" style="background-color: ${item.color}"></div>
+                        <span class="text-sm">${item.label}</span>
+                    </div>
+                    <div class="text-right">
+                        <strong class="text-sm font-bold">${formatCurrency(item.value, currency)}</strong>
+                        <span class="text-xs text-gray-500 ml-1">(${formatNumber(item.share, 1)}%)</span>
+                    </div>
+                </div>
+            `).join('');
+
+            const svg_chart = `
+                <div class="relative w-32 h-32 flex-shrink-0">
+                    <svg viewBox="0 0 ${viewBoxSize} ${viewBoxSize}" class="w-full h-full">
+                        ${svg_segments}
+                    </svg>
+                </div>
+            `;
+            
+            return `
+                ${svg_chart}
+                <div class="w-full flex-grow space-y-2">
+                    ${legend_html}
+                </div>
+            `;
+        }
+
+
+        function calculateAndShowResults() {
+            formulasColumn.classList.remove('hidden');
+            summaryColumn.classList.remove('hidden');
+
+            // --- 1. Get values ---
+            const P_cap_kW = parseFloat(document.getElementById('power_capacity').value) * 1000;
+            const E_cap_kWh = P_cap_kW * parseFloat(document.getElementById('discharge_duration').value);
+            const C_inv_p = parseFloat(document.getElementById('investment_power').value);
+            const C_inv_e = parseFloat(document.getElementById('investment_energy').value);
+            const C_om_p = parseFloat(document.getElementById('om_power').value);
+            const C_om_e = parseFloat(document.getElementById('om_energy').value);
+            const C_charge = parseFloat(document.getElementById('charging_cost').value);
+            const C_eol_e = parseFloat(document.getElementById('eol_cost_energy').value);
+            const eff_rt = parseFloat(document.getElementById('round_trip_efficiency').value) / 100;
+            const eff_self = parseFloat(document.getElementById('self_discharge').value) / 100;
+            const life_cyc = parseFloat(document.getElementById('cycle_lifetime').value);
+            const deg_t = parseFloat(document.getElementById('temporal_degradation').value) / 100;
+            const eol_thresh = parseFloat(document.getElementById('eol_threshold').value) / 100;
+            const cycles_pa = parseFloat(document.getElementById('annual_cycles').value);
+            const r = parseFloat(document.getElementById('discount_rate').value) / 100;
+            const DoD = parseFloat(document.getElementById('depth_of_discharge').value) / 100;
+
+            // --- 2. Lifetime Calculation ---
+            const deg_c = 1 - Math.pow(eol_thresh, 1 / life_cyc);
+            const N_op_log_denominator = Math.log(1 - deg_t) + cycles_pa * Math.log(1 - deg_c);
+            const N_op = N_op_log_denominator < 0 ? Math.log(eol_thresh) / N_op_log_denominator : 50;
+            
+            // --- 3. Lifetime Cost Calculation ---
+            let total_discounted_energy_out = 0;
+            let total_energy_in_lifetime = 0;
+            let total_energy_out_lifetime = 0;
+            const cost_components = { investment: 0, om: 0, charging: 0, eol: 0 };
+            const initial_investment = (C_inv_p * P_cap_kW) + (C_inv_e * E_cap_kWh);
+            cost_components.investment = initial_investment;
+
+            const E_discharged_nominal_1 = E_cap_kWh * DoD * cycles_pa;
+            const E_in_1 = E_discharged_nominal_1 / eff_rt;
+            const E_out_1 = E_in_1 * eff_rt * (1 - eff_self);
+
+            for (let n = 1; n <= N_op; n++) {
+                const discount_factor = 1 / Math.pow(1 + r, n);
+                const remaining_capacity_factor = Math.pow(1 - deg_t, n-1) * Math.pow(1 - deg_c, (n-1) * cycles_pa);
+                const E_cap_n = E_cap_kWh * remaining_capacity_factor;
+                
+                const E_discharged_nominal_n = E_cap_n * DoD * cycles_pa;
+                const E_in_n = E_discharged_nominal_n / eff_rt;
+                const E_out_n = E_in_n * eff_rt * (1 - eff_self);
+                
+                total_energy_in_lifetime += E_in_n;
+                total_energy_out_lifetime += E_out_n;
+
+                const om_cost_n = (C_om_p * P_cap_kW) + (C_om_e * E_in_n / 1000);
+                const charging_cost_n = C_charge * (E_in_n / 1000);
+                
+                cost_components.om += om_cost_n * discount_factor;
+                cost_components.charging += charging_cost_n * discount_factor;
+                total_discounted_energy_out += (E_out_n / 1000) * discount_factor;
+            }
+
+            const eol_capacity_factor = Math.pow(1 - deg_t, N_op) * Math.pow(1 - deg_c, N_op * cycles_pa);
+            const eol_value = C_eol_e * (E_cap_kWh * eol_capacity_factor);
+            cost_components.eol = eol_value * (1 / Math.pow(1 + r, N_op));
+            const total_discounted_cost = cost_components.investment + cost_components.om + cost_components.charging - cost_components.eol;
+
+            // --- 4. Final Results Calculation (LCOS & ACC) ---
+            const lcos = total_discounted_energy_out > 0 ? total_discounted_cost / total_discounted_energy_out : 0;
+            const annuity_factor = (r > 0) ? (r * Math.pow(1 + r, N_op)) / (Math.pow(1 + r, N_op) - 1) : 1/N_op;
+            const annualized_cost = total_discounted_cost * annuity_factor;
+            const acc_per_year = P_cap_kW > 0 ? annualized_cost / P_cap_kW : 0;
+
+
+            // --- Generate formula details ---
+            detailsContainer.innerHTML = `
+                <div class="calc-step">
+                    <h3 class="calc-title">1. Initial Investment (CAPEX)</h3>
+                    <p class="calc-formula">(Power Cost * Power) + (Energy Cost * Energy)<br>
+                    (${formatCurrency(C_inv_p, '$/kW')} * ${formatNumber(P_cap_kW)} kW) + (${formatCurrency(C_inv_e, '$/kWh')} * ${formatNumber(E_cap_kWh)} kWh) = <span class="calc-value">${formatCurrency(initial_investment, '$')}</span></p>
+                </div>
+                <div class="calc-step">
+                    <h3 class="calc-title">2. Operational Lifetime (N_op)</h3>
+                    <p class="text-sm mb-2">Time required for the capacity to reach the end-of-life threshold (SOH) due to degradation.</p>
+                    <p class="calc-formula">N_op = ln(Threshold) / (ln(1-deg_t) + Cycles*ln(1-deg_c))<br>
+                    ln(${eol_thresh}) / (ln(1-${deg_t}) + ${cycles_pa}*ln(1-${deg_c.toExponential(2)})) = <span class="calc-value">${formatNumber(N_op, 1)} years</span></p>
+                </div>
+                <div class="calc-step">
+                    <h3 class="calc-title">3. Charged & Discharged Energy (Year 1)</h3>
+                    <p class="text-sm mb-2">Calculation based on standard energy storage equations.</p>
+                    <p class="calc-formula">Ein = (Capacity * DoD * Cycles) / RTE<br>
+                    (${formatNumber(E_cap_kWh,0)} kWh * ${DoD*100}% * ${cycles_pa}) / ${eff_rt*100}% = <span class="calc-value">${formatNumber(E_in_1, 0)} kWh</span></p>
+                    <p class="calc-formula mt-2">Eout = Ein * RTE * (1 - Self-Discharge)<br>
+                    ${formatNumber(E_in_1, 0)} kWh * ${eff_rt*100}% * (1 - ${eff_self*100}%) = <span class="calc-value">${formatNumber(E_out_1, 0)} kWh</span></p>
+                </div>
+                <div class="calc-step">
+                    <h3 class="calc-title">4. Total Discounted Cost (LCC)</h3>
+                    <p class="calc-formula">LCC = CAPEX + Discounted_OPEX - Discounted_EoL_Value<br>
+                    ${formatCurrency(cost_components.investment, '$')} + ${formatCurrency(cost_components.om + cost_components.charging, '$')} - ${formatCurrency(Math.abs(cost_components.eol), '$')} = <span class="calc-value">${formatCurrency(total_discounted_cost, '$')}</span></p>
+                </div>
+                <div class="calc-step">
+                    <h3 class="calc-title">5. Final LCOS Calculation</h3>
+                    <p class="calc-formula">LCOS = LCC / Total Discounted Discharged Energy<br>
+                    <span class="calc-value">${formatCurrency(total_discounted_cost, '$')}</span> / <span class="calc-value">${formatNumber(total_discounted_energy_out)} MWh</span></p>
+                </div>
+                <div class="calc-step">
+                    <h3 class="calc-title">6. Final ACC Calculation</h3>
+                     <p class="calc-formula">ACC = (LCC * Annuity Factor) / Power<br>
+                    (<span class="calc-value">${formatCurrency(total_discounted_cost, '$')}</span> * <span class="calc-value">${formatNumber(annuity_factor, 4)}</span>) / <span class="calc-value">${formatNumber(P_cap_kW)} kW</span></p>
+                </div>
+            `;
+
+            // --- 5. Update final results UI ---
+            document.getElementById('lifetime_result').textContent = formatNumber(N_op, 1);
+            document.getElementById('lcos_total').textContent = formatCurrency(lcos, '$/MWh');
+            document.getElementById('acc_total').textContent = formatCurrency(acc_per_year, '$/kW-yr');
+            
+            document.getElementById('performance_summary').innerHTML = `
+                <h3 class="text-xl font-semibold mb-2">Performance Summary</h3>
+                <div class="text-sm space-y-1">
+                    <div class="flex justify-between"><span>Total charged energy:</span> <strong>${formatNumber(total_energy_in_lifetime/1000, 0)} MWh</strong></div>
+                    <div class="flex justify-between"><span>Total discharged energy:</span> <strong>${formatNumber(total_energy_out_lifetime/1000, 0)} MWh</strong></div>
+                    <div class="flex justify-between"><span>Effective efficiency:</span> <strong>${formatNumber((total_energy_out_lifetime/total_energy_in_lifetime)*100, 1)}%</strong></div>
+                </div>
+            `;
+
+            // --- 6. Generate charts ---
+            const shares = {
+                inv: (cost_components.investment / total_discounted_cost) * 100,
+                om: (cost_components.om / total_discounted_cost) * 100,
+                charging: (cost_components.charging / total_discounted_cost) * 100,
+                eol: (-cost_components.eol / total_discounted_cost) * 100
+            };
+
+            const lcos_values = {
+                investment: total_discounted_energy_out > 0 ? cost_components.investment / total_discounted_energy_out : 0,
+                om: total_discounted_energy_out > 0 ? cost_components.om / total_discounted_energy_out : 0,
+                charging: total_discounted_energy_out > 0 ? cost_components.charging / total_discounted_energy_out : 0,
+                eol: total_discounted_energy_out > 0 ? -cost_components.eol / total_discounted_energy_out : 0
+            };
+
+            const acc_values = {
+                investment: P_cap_kW > 0 ? (cost_components.investment * annuity_factor) / P_cap_kW : 0,
+                om: P_cap_kW > 0 ? (cost_components.om * annuity_factor) / P_cap_kW : 0,
+                charging: P_cap_kW > 0 ? (cost_components.charging * annuity_factor) / P_cap_kW : 0,
+                eol: P_cap_kW > 0 ? (-cost_components.eol * annuity_factor) / P_cap_kW : 0
+            };
+
+            document.getElementById('lcos_chart_container').innerHTML = createDoughnutChart(shares, lcos_values, '$/MWh');
+            document.getElementById('acc_chart_container').innerHTML = createDoughnutChart(shares, acc_values, '$/kW-yr');
+        }
+
+        window.onload = updateTechnologyForm;
+    </script>
+</body>
+</html>

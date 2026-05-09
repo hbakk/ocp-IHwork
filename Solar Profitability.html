@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Optimisation OCP PV | Solar Profitability</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f9fafb;
+        }
+        .input-group {
+            display: flex;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+        .input-group label {
+            flex: 2;
+            margin-right: 1rem;
+            font-size: 0.875rem;
+            color: #4B5563;
+        }
+        .input-group .input-container {
+            flex: 3;
+            display: flex;
+            align-items: center;
+        }
+        .input-group input {
+            width: 100%;
+            padding: 0.5rem;
+            border-radius: 0.375rem;
+            border: 1px solid #D1D5DB;
+            text-align: right;
+        }
+        .input-group .unit {
+            margin-left: 0.5rem;
+            font-size: 0.875rem;
+            color: #6B7280;
+            min-width: 85px;
+            text-align: left;
+        }
+        .calc-step {
+            margin-bottom: 1.5rem;
+            padding-bottom: 1.5rem;
+            border-bottom: 1px solid #E5E7EB;
+        }
+        .calc-step:last-child {
+            border-bottom: none;
+            padding-bottom: 0;
+        }
+        .calc-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: #1F2937;
+            margin-bottom: 1rem;
+        }
+        .calc-formula {
+            font-family: monospace;
+            background-color: #F3F4F6;
+            padding: 1rem;
+            border-radius: 0.375rem;
+            color: #374151;
+            font-size: 0.9rem;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            line-height: 1.6;
+        }
+        .calc-value {
+            font-weight: 700;
+            color: #4F46E5;
+        }
+        .text-success { color: #10B981; }
+        .text-danger { color: #EF4444; }
+        .result-card {
+            background-color: white;
+            border-radius: 0.75rem;
+            padding: 1.5rem;
+            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06);
+            border: 1px solid #e5e7eb;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 text-gray-800">
+
+    <div class="container mx-auto p-4 md:p-8">
+
+
+        <header class="text-center mb-10">
+            <h1 class="text-3xl md:text-4xl font-bold text-gray-900">Solar Profitability Calculator</h1>
+            <p class="mt-2 text-lg text-gray-600">Analyze the investment, savings, and profitability of your solar project.</p>
+        </header>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <!-- Column 1: Inputs -->
+            <div class="lg:col-span-1 bg-white p-6 rounded-xl shadow-lg">
+                <h2 class="text-2xl font-bold mb-6 border-b pb-4 text-gray-800">Project Parameters</h2>
+
+                <div class="mb-6">
+                    <h3 class="text-lg font-semibold mb-3 text-indigo-700">Your Consumption</h3>
+                    <div class="input-group"><label for="annual_consumption">Annual Consumption</label><div class="input-container"><input type="number" id="annual_consumption" value="5000"><span class="unit">kWh/yr</span></div></div>
+                    <div class="input-group"><label for="grid_price">Grid Price per kWh</label><div class="input-container"><input type="number" id="grid_price" value="0.20" step="0.01"><span class="unit">$/kWh</span></div></div>
+                    <div class="input-group"><label for="feed_in_tariff">Feed-in Tariff (Export)</label><div class="input-container"><input type="number" id="feed_in_tariff" value="0.08" step="0.01"><span class="unit">$/kWh</span></div></div>
+                </div>
+
+                <div class="mb-6">
+                    <h3 class="text-lg font-semibold mb-3 text-indigo-700">Solar PV System</h3>
+                    <div class="input-group"><label for="system_size">System Size</label><div class="input-container"><input type="number" id="system_size" value="5"><span class="unit">kWp</span></div></div>
+                    <div class="input-group"><label for="solar_irradiance">Solar Irradiance</label><div class="input-container"><input type="number" id="solar_irradiance" value="1500"><span class="unit">kWh/kWp/yr</span></div></div>
+                    <div class="input-group"><label for="self_consumption_rate">Self-Consumption Rate</label><div class="input-container"><input type="number" id="self_consumption_rate" value="40"><span class="unit">%</span></div></div>
+                </div>
+
+                <div class="mb-6">
+                    <h3 class="text-lg font-semibold mb-3 text-indigo-700">Costs & Lifetime</h3>
+                    <div class="input-group"><label for="capex_cost">Investment Cost</label><div class="input-container"><input type="number" id="capex_cost" value="1500"><span class="unit">$/kWp</span></div></div>
+                    <div class="input-group"><label for="om_cost">Annual O&M Cost</label><div class="input-container"><input type="number" id="om_cost" value="1"><span class="unit">% of CAPEX</span></div></div>
+                    <div class="input-group"><label for="inverter_replacement_cost">Inverter Replacement Cost</label><div class="input-container"><input type="number" id="inverter_replacement_cost" value="200"><span class="unit">$/kWp</span></div></div>
+                    <div class="input-group"><label for="project_lifetime">Project Lifetime</label><div class="input-container"><input type="number" id="project_lifetime" value="25"><span class="unit">years</span></div></div>
+                    <div class="input-group"><label for="inverter_lifetime">Inverter Lifetime</label><div class="input-container"><input type="number" id="inverter_lifetime" value="12"><span class="unit">years</span></div></div>
+                     <div class="input-group"><label for="degradation_rate">Degradation Rate</label><div class="input-container"><input type="number" id="degradation_rate" value="0.5" step="0.1"><span class="unit">% / yr</span></div></div>
+                </div>
+
+                <div class="mb-6">
+                    <h3 class="text-lg font-semibold mb-3 text-indigo-700">Financial</h3>
+                    <div class="input-group"><label for="discount_rate">Discount Rate</label><div class="input-container"><input type="number" id="discount_rate" value="4"><span class="unit">%</span></div></div>
+                </div>
+
+                <div class="mt-8">
+                    <button id="calculate_button" class="w-full bg-indigo-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors duration-300 shadow-lg">
+                        Analyze Profitability
+                    </button>
+                </div>
+            </div>
+
+            <!-- Columns 2 & 3: Results and Formulas -->
+            <div id="results_container" class="lg:col-span-2 hidden">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                    <div class="result-card text-center">
+                        <h3 class="text-lg font-semibold text-gray-600 mb-2">Payback Period</h3>
+                        <p class="text-4xl font-bold text-indigo-600" id="payback_period_result"></p>
+                    </div>
+                    <div class="result-card text-center">
+                        <h3 class="text-lg font-semibold text-gray-600 mb-2">Total Project Profit</h3>
+                        <p class="text-4xl font-bold" id="total_profit_result"></p>
+                    </div>
+                    <div class="result-card text-center">
+                        <h3 class="text-lg font-semibold text-gray-600 mb-2">Net Present Value (NPV)</h3>
+                        <p class="text-4xl font-bold" id="npv_result"></p>
+                    </div>
+                </div>
+
+                <div class="bg-white p-6 rounded-xl shadow-lg">
+                    <h2 class="text-2xl font-bold mb-6 border-b pb-4 text-gray-800">Detailed Financial Analysis</h2>
+                    <div id="calculation_details">
+                        <!-- Content will be generated by JavaScript -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const calculateButton = document.getElementById('calculate_button');
+        const resultsContainer = document.getElementById('results_container');
+        const detailsContainer = document.getElementById('calculation_details');
+
+        calculateButton.addEventListener('click', calculateAndShowResults);
+        
+        function formatNumber(value, decimals = 2) {
+            if (isNaN(value) || !isFinite(value)) return 'N/A';
+            return value.toLocaleString('en-US', { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
+        }
+        
+        function formatCurrency(value, unit = ' $') {
+            if (isNaN(value) || !isFinite(value)) return `N/A`;
+            const sign = value < 0 ? '-' : '';
+            return `${sign}${formatNumber(Math.abs(value))}${unit}`;
+        }
+
+        function calculateAndShowResults() {
+            resultsContainer.classList.remove('hidden');
+            
+            // --- 1. Get values ---
+            const P_sys_kW = parseFloat(document.getElementById('system_size').value);
+            const irradiance = parseFloat(document.getElementById('solar_irradiance').value);
+            const self_consumption_rate = parseFloat(document.getElementById('self_consumption_rate').value) / 100;
+            const deg_rate = parseFloat(document.getElementById('degradation_rate').value) / 100;
+            const N_proj = parseInt(document.getElementById('project_lifetime').value);
+            const N_inv = parseInt(document.getElementById('inverter_lifetime').value);
+            const C_capex_kw = parseFloat(document.getElementById('capex_cost').value);
+            const C_om_rate = parseFloat(document.getElementById('om_cost').value) / 100;
+            const C_inv_rep_kw = parseFloat(document.getElementById('inverter_replacement_cost').value);
+            const r = parseFloat(document.getElementById('discount_rate').value) / 100;
+            const grid_price = parseFloat(document.getElementById('grid_price').value);
+            const feed_in_tariff = parseFloat(document.getElementById('feed_in_tariff').value);
+
+            // --- 2. Lifetime Financial Calculations ---
+            const C_capex_total = P_sys_kW * C_capex_kw;
+            const C_om_annual = C_capex_total * C_om_rate;
+
+            let cumulative_cash_flow = -C_capex_total;
+            let discounted_npv = -C_capex_total;
+            let payback_year = -1;
+            
+            let total_lifetime_value = 0;
+            let total_lifetime_costs_discounted = C_capex_total;
+            let total_lifetime_energy_kwh = 0;
+
+            let first_year_savings = 0;
+            let first_year_revenue = 0;
+
+            for (let n = 1; n <= N_proj; n++) {
+                const discount_factor = 1 / Math.pow(1 + r, n);
+                
+                // Energy production for year n
+                const energy_n_kwh = P_sys_kW * irradiance * Math.pow(1 - deg_rate, n - 1);
+                total_lifetime_energy_kwh += energy_n_kwh;
+                
+                // Value calculation (savings + revenue)
+                const energy_self_consumed = Math.min(energy_n_kwh * self_consumption_rate, parseFloat(document.getElementById('annual_consumption').value));
+                const energy_exported = energy_n_kwh - energy_self_consumed;
+                
+                const savings_n = energy_self_consumed * grid_price;
+                const revenue_n = energy_exported * feed_in_tariff;
+                const total_value_n = savings_n + revenue_n;
+                total_lifetime_value += total_value_n;
+
+                if (n === 1) {
+                    first_year_savings = savings_n;
+                    first_year_revenue = revenue_n;
+                }
+                
+                // Annual costs calculation
+                let annual_costs = C_om_annual;
+                if (n % N_inv === 0 && n < N_proj) {
+                    annual_costs += P_sys_kW * C_inv_rep_kw;
+                }
+                
+                // Cash flow
+                const net_cash_flow_n = total_value_n - annual_costs;
+                cumulative_cash_flow += net_cash_flow_n;
+                discounted_npv += net_cash_flow_n * discount_factor;
+                total_lifetime_costs_discounted += annual_costs * discount_factor;
+
+                if (payback_year === -1 && cumulative_cash_flow >= 0) {
+                    payback_year = n - 1 + (Math.abs(cumulative_cash_flow - net_cash_flow_n) / net_cash_flow_n);
+                }
+            }
+            
+            const total_profit = cumulative_cash_flow;
+            const lcoe = total_lifetime_costs_discounted / (total_lifetime_energy_kwh / 1000); // in $/MWh
+
+            // --- 3. Update UI ---
+            
+            // Main result cards
+            document.getElementById('payback_period_result').textContent = payback_year > 0 ? `${formatNumber(payback_year, 1)} yrs` : '> 25 yrs';
+            document.getElementById('total_profit_result').textContent = formatCurrency(total_profit, ' $');
+            document.getElementById('npv_result').textContent = formatCurrency(discounted_npv, ' $');
+            
+            document.getElementById('total_profit_result').className = `text-4xl font-bold ${total_profit >= 0 ? 'text-success' : 'text-danger'}`;
+            document.getElementById('npv_result').className = `text-4xl font-bold ${discounted_npv >= 0 ? 'text-success' : 'text-danger'}`;
+
+
+            // Generate HTML for details
+            detailsContainer.innerHTML = `
+                <div class="calc-step">
+                    <h3 class="calc-title">1. Initial Investment (CAPEX)</h3>
+                    <p class="calc-formula">System Size * Cost per kWp<br>
+                    ${formatNumber(P_sys_kW, 2)} kWp * ${formatCurrency(C_capex_kw, ' $/kWp')} = <span class="calc-value">${formatCurrency(C_capex_total, ' $')}</span></p>
+                </div>
+                <div class="calc-step">
+                    <h3 class="calc-title">2. Value Generated (First Year)</h3>
+                    <p class="calc-formula">
+                    Savings (Self-Consumption) = Self-Consumed Energy * Grid Price<br>
+                    = ${formatNumber(first_year_savings / grid_price, 0)} kWh * ${formatCurrency(grid_price, ' $/kWh')} = <span class="calc-value">${formatCurrency(first_year_savings, ' $')}</span>
+                    <br><br>
+                    Revenue (Export) = Exported Energy * Feed-in Tariff<br>
+                    = ${formatNumber(first_year_revenue / feed_in_tariff, 0)} kWh * ${formatCurrency(feed_in_tariff, ' $/kWh')} = <span class="calc-value">${formatCurrency(first_year_revenue, ' $')}</span>
+                    </p>
+                </div>
+                <div class="calc-step">
+                    <h3 class="calc-title">3. Lifetime Costs & Value (25 years)</h3>
+                    <p class="calc-formula">
+                    <span class="font-bold block">Total Discounted Cost (LCC) =</span> <span class="calc-value">${formatCurrency(total_lifetime_costs_discounted, ' $')}</span><br>
+                    <span class="font-bold block mt-2">Total Value Generated (undiscounted) =</span> <span class="calc-value">${formatCurrency(total_lifetime_value, ' $')}</span>
+                    </p>
+                </div>
+                <div class="calc-step">
+                    <h3 class="calc-title">4. Levelized Cost of Energy (LCOE)</h3>
+                     <p class="text-sm mb-2">The average cost of each MWh produced by the system over its lifetime. Compare this with the grid price.</p>
+                    <p class="calc-formula">LCOE = Total Discounted Cost / Total Energy Production<br>
+                    ${formatCurrency(total_lifetime_costs_discounted, '$')} / ${formatNumber(total_lifetime_energy_kwh / 1000, 2)} MWh = <span class="calc-value">${formatCurrency(lcoe, ' $/MWh')}</span></p>
+                </div>
+                <div class="calc-step">
+                    <h3 class="calc-title">5. Profitability Calculation</h3>
+                    <p class="text-sm mb-2">The Net Present Value (NPV) is the sum of all future cash flows (savings + revenue - costs), discounted to their present value, minus the initial investment. A positive NPV indicates a profitable investment.</p>
+                    <p class="calc-formula">
+                    <span class="font-bold block">Net Present Value (NPV) =</span> <span class="calc-value">${formatCurrency(discounted_npv, ' $')}</span><br>
+                    <span class="font-bold block mt-2">Payback Period =</span> <span class="calc-value">${payback_year > 0 ? formatNumber(payback_year, 1) + ' years' : 'Not profitable over 25 years'}</span>
+                    </p>
+                </div>
+            `;
+        }
+    </script>
+</body>
+</html>

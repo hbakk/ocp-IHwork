@@ -1,0 +1,21 @@
+{
+  "name": "Optimisation OCP PV",
+  "short_name": "OCP PV",
+  "start_url": "/HK_energies/index.html",
+  "scope": "/HK_energies/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#0b7dda",
+  "icons": [
+    {
+      "src": "/HK_energies/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/HK_energies/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

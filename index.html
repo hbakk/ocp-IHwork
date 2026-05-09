@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Optimisation OCP PV | Dashboard</title>
+    <link rel="manifest" href="/HK_energies/manifest.json">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <link rel="apple-touch-icon" href="/HK_energies/icons/icon-192.png">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Poppins', sans-serif;
+            background-color: #f8fafc;
+            color: #1e293b;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+        .sidebar {
+            background-color: #111827;
+            transition: transform 0.3s ease-in-out;
+        }
+        .sidebar-link {
+            position: relative;
+            transition: color 0.25s ease, background-color 0.25s ease;
+        }
+        .sidebar-link:hover,
+        .sidebar-link.active {
+            color: #ffffff;
+            background-color: rgba(245, 158, 11, 0.16);
+        }
+        .sidebar-link:hover::before,
+        .sidebar-link.active::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 4px;
+            background-color: #f59e0b;
+            border-radius: 0 4px 4px 0;
+            box-shadow: 0 0 15px #f59e0b;
+        }
+        .page-card {
+            background: #ffffff;
+            border: 1px solid rgba(226, 232, 240, 0.9);
+            border-radius: 1.25rem;
+            box-shadow: 0 18px 45px -28px rgba(15, 23, 42, 0.35);
+        }
+        .feature-card {
+            background: #ffffff;
+            border: 1px solid #e5e7eb;
+            border-radius: 1.25rem;
+            padding: 1.75rem;
+            box-shadow: 0 18px 42px -30px rgba(15, 23, 42, 0.45);
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+        .feature-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 24px 54px -34px rgba(15, 23, 42, 0.55);
+        }
+        .icon-tile {
+            width: 4rem;
+            height: 4rem;
+            border-radius: 1rem;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            color: #ffffff;
+            font-weight: 800;
+            box-shadow: 0 14px 28px -18px currentColor;
+        }
+        .action-button {
+            display: block;
+            width: 100%;
+            text-align: center;
+            border-radius: 999px;
+            padding: 0.85rem 1rem;
+            color: #ffffff;
+            font-weight: 700;
+            transition: transform 0.2s ease, box-shadow 0.2s ease, filter 0.2s ease;
+        }
+        .action-button:hover {
+            transform: translateY(-1px);
+            filter: brightness(1.03);
+            box-shadow: 0 18px 30px -22px rgba(15, 23, 42, 0.8);
+        }
+    </style>
+</head>
+<body class="overflow-x-hidden">
+    <div class="flex min-h-screen">
+        <aside id="sidebar" class="w-64 flex-col fixed inset-y-0 left-0 transform -translate-x-full md:translate-x-0 z-50 sidebar">
+            <div class="p-6 flex items-center space-x-4 border-b border-gray-700/50">
+                <div class="p-2 bg-amber-500 rounded-xl shadow-lg shadow-amber-500/30">
+                    <svg class="h-8 w-8 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z" />
+                    </svg>
+                </div>
+                <h1 class="text-xl font-bold text-white tracking-wider leading-tight">Optimisation<br>OCP PV</h1>
+            </div>
+
+            <nav class="flex-1 px-4 py-8 space-y-3">
+                <a href="index.html" class="sidebar-link active flex items-center px-4 py-3 text-slate-300 rounded-xl">
+                    <span class="mr-4">D</span><span>Dashboard</span>
+                </a>
+                <a href="Solar Profitability.html" class="sidebar-link flex items-center px-4 py-3 text-slate-300 rounded-xl">
+                    <span class="mr-4">S</span><span>Solar Profitability</span>
+                </a>
+                <a href="Storage Cost.html" class="sidebar-link flex items-center px-4 py-3 text-slate-300 rounded-xl">
+                    <span class="mr-4">B</span><span>Storage Cost</span>
+                </a>
+                <a href="Full Analysis.html" class="sidebar-link flex items-center px-4 py-3 text-slate-300 rounded-xl">
+                    <span class="mr-4">A</span><span>Full Analysis</span>
+                </a>
+                <a href="Battery Parameters.html" class="sidebar-link flex items-center px-4 py-3 text-slate-300 rounded-xl">
+                    <span class="mr-4">P</span><span>Parameters</span>
+                </a>
+                <a href="OCP EMS Simulator.html" class="sidebar-link flex items-center px-4 py-3 text-slate-300 rounded-xl">
+                    <span class="mr-4">O</span><span>OCP EMS Simulator</span>
+                </a>
+            </nav>
+        </aside>
+
+        <div class="flex-1 md:ml-64">
+            <header class="bg-white/85 backdrop-blur-md sticky top-0 z-30 border-b border-slate-200/70">
+                <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                    <div class="py-4 flex items-center justify-between">
+                        <div class="flex items-center">
+                            <button id="hamburger-button" class="text-slate-500 hover:text-amber-600 md:hidden p-2 rounded-lg hover:bg-slate-100 transition-colors">
+                                <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
+                                </svg>
+                            </button>
+                            <p class="text-sm font-semibold text-slate-500 ml-4 md:ml-0">Dashboard</p>
+                        </div>
+                    </div>
+                </div>
+            </header>
+
+            <main class="p-4 sm:p-6 lg:p-8">
+                <div class="max-w-7xl mx-auto space-y-8">
+                    <section class="page-card p-6 md:p-8 relative overflow-hidden">
+                        <div class="absolute inset-x-0 top-0 h-1.5 bg-gradient-to-r from-amber-400 via-emerald-500 to-indigo-500"></div>
+                        <p class="text-sm font-bold uppercase tracking-wide text-amber-600">Optimisation OCP PV platform</p>
+                        <h1 class="text-3xl md:text-5xl font-extrabold text-slate-900 mt-3 tracking-tight">Dashboard</h1>
+                        <p class="text-lg text-slate-600 mt-4 max-w-4xl leading-relaxed">
+                            Energy analysis tools for PV profitability, storage cost, full PV-BESS analysis, and EMS simulation.
+                        </p>
+                    </section>
+
+                    <section id="feature-cards" class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <article class="feature-card flex flex-col">
+                            <span class="icon-tile bg-gradient-to-br from-amber-400 to-orange-500">PV</span>
+                            <h2 class="text-2xl font-bold text-slate-900 mt-6">Solar Profitability</h2>
+                            <p class="text-slate-600 mt-3 mb-7 flex-grow leading-relaxed">Estimate payback period and viability of your PV installation.</p>
+                            <a href="Solar Profitability.html" class="action-button bg-amber-500 hover:bg-amber-600">Run Calculation</a>
+                        </article>
+
+                        <article class="feature-card flex flex-col">
+                            <span class="icon-tile bg-gradient-to-br from-blue-500 to-indigo-600">B</span>
+                            <h2 class="text-2xl font-bold text-slate-900 mt-6">Storage Cost</h2>
+                            <p class="text-slate-600 mt-3 mb-7 flex-grow leading-relaxed">Analyze the Levelized Cost of Storage (LCOS) for battery technologies.</p>
+                            <a href="Storage Cost.html" class="action-button bg-indigo-600 hover:bg-indigo-700">Run Calculation</a>
+                        </article>
+
+                        <article class="feature-card flex flex-col">
+                            <span class="icon-tile bg-gradient-to-br from-emerald-400 to-green-600">A</span>
+                            <h2 class="text-2xl font-bold text-slate-900 mt-6">Full Analysis</h2>
+                            <p class="text-slate-600 mt-3 mb-7 flex-grow leading-relaxed">Optimize costs for a combined Solar + Battery system.</p>
+                            <a href="Full Analysis.html" class="action-button bg-emerald-600 hover:bg-emerald-700">Run Analysis</a>
+                        </article>
+
+                        <article class="feature-card flex flex-col">
+                            <span class="icon-tile bg-gradient-to-br from-slate-500 to-slate-800">P</span>
+                            <h2 class="text-2xl font-bold text-slate-900 mt-6">Parameters</h2>
+                            <p class="text-slate-600 mt-3 mb-7 flex-grow leading-relaxed">Configure detailed parameters for your energy storage systems.</p>
+                            <a href="Battery Parameters.html" class="action-button bg-slate-900 hover:bg-slate-800">Access Settings</a>
+                        </article>
+
+                        <article class="feature-card flex flex-col lg:col-span-2">
+                            <span class="icon-tile bg-gradient-to-br from-teal-400 to-emerald-600">EMS</span>
+                            <h2 class="text-2xl font-bold text-slate-900 mt-6">OCP EMS Simulator</h2>
+                            <p class="text-slate-600 mt-3 mb-7 flex-grow leading-relaxed">Run PV-BESS EMS studies for the OCP Benguerir case using CSV or Excel data.</p>
+                            <a href="OCP EMS Simulator.html" class="action-button bg-teal-600 hover:bg-teal-700">Open Simulator</a>
+                        </article>
+                    </section>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <div id="sidebar-overlay" class="fixed inset-0 bg-black bg-opacity-50 z-40 hidden md:hidden"></div>
+
+    <script>
+        const sidebar = document.getElementById('sidebar');
+        const hamburgerButton = document.getElementById('hamburger-button');
+        const overlay = document.getElementById('sidebar-overlay');
+
+        function toggleSidebar() {
+            sidebar.classList.toggle('-translate-x-full');
+            overlay.classList.toggle('hidden');
+        }
+
+        hamburgerButton.addEventListener('click', toggleSidebar);
+        overlay.addEventListener('click', toggleSidebar);
+    </script>
+
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/HK_energies/sw.js').catch(err => {
+                    console.error('Service Worker registration failed:', err);
+                });
+            });
+        }
+    </script>
+</body>
+</html>

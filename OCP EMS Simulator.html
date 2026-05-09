@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Optimisation OCP PV | EMS Simulator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Poppins', sans-serif;
+            background-color: #f8fafc;
+            color: #1e293b;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+        .sidebar {
+            background-color: #111827;
+            transition: transform 0.3s ease-in-out;
+        }
+        .sidebar-link {
+            position: relative;
+            transition: color 0.3s ease, background-color 0.3s ease;
+        }
+        .sidebar-link:hover,
+        .sidebar-link.active {
+            color: #ffffff;
+            background-color: rgba(245, 158, 11, 0.16);
+        }
+        .sidebar-link:hover::before,
+        .sidebar-link.active::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 4px;
+            background-color: #f59e0b;
+            border-radius: 0 4px 4px 0;
+            box-shadow: 0 0 15px #f59e0b;
+        }
+        .page-card {
+            background: #ffffff;
+            border: 1px solid rgba(226, 232, 240, 0.9);
+            border-radius: 1rem;
+            box-shadow: 0 18px 45px -28px rgba(15, 23, 42, 0.35);
+        }
+        .assumption-card,
+        .metric-card {
+            background: #ffffff;
+            border: 1px solid #e5e7eb;
+            border-radius: 1rem;
+            padding: 1rem;
+            box-shadow: 0 12px 32px -24px rgba(15, 23, 42, 0.45);
+        }
+        .icon-tile {
+            width: 2.75rem;
+            height: 2.75rem;
+            border-radius: 0.875rem;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 800;
+            box-shadow: 0 10px 24px -14px currentColor;
+        }
+        .input-label {
+            display: block;
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: #334155;
+            margin-bottom: 0.5rem;
+        }
+        .input-field {
+            width: 100%;
+            border: 1px solid #d1d5db;
+            border-radius: 0.875rem;
+            padding: 0.8rem 0.95rem;
+            background: #ffffff;
+            transition: border-color 0.2s ease, box-shadow 0.2s ease;
+        }
+        .input-field:focus {
+            outline: none;
+            border-color: #059669;
+            box-shadow: 0 0 0 4px rgba(5, 150, 105, 0.14);
+        }
+        .primary-button {
+            background: linear-gradient(135deg, #059669, #10b981);
+            color: white;
+            border-radius: 0.875rem;
+            font-weight: 700;
+            transition: transform 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease;
+            box-shadow: 0 16px 28px -18px rgba(5, 150, 105, 0.9);
+        }
+        .primary-button:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 20px 34px -18px rgba(5, 150, 105, 1);
+        }
+        .secondary-button {
+            border-radius: 0.75rem;
+            font-weight: 700;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+        .secondary-button:hover {
+            transform: translateY(-1px);
+        }
+        .result-table th {
+            position: sticky;
+            top: 0;
+            background: #111827;
+            color: #ffffff;
+            font-size: 0.72rem;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            z-index: 1;
+        }
+        .result-table th,
+        .result-table td {
+            padding: 0.85rem;
+            border-bottom: 1px solid #e5e7eb;
+            text-align: right;
+            white-space: nowrap;
+        }
+        .result-table th:first-child,
+        .result-table td:first-child {
+            text-align: left;
+        }
+        .result-table tbody tr:nth-child(even) {
+            background: #f8fafc;
+        }
+        .result-table tbody tr:hover {
+            background: #ecfdf5;
+        }
+        .chart-card {
+            background: #ffffff;
+            border: 1px solid #e5e7eb;
+            border-radius: 1rem;
+            padding: 1.25rem;
+            box-shadow: 0 12px 32px -24px rgba(15, 23, 42, 0.45);
+        }
+        .chart-box {
+            height: 320px;
+            position: relative;
+        }
+        .chart-box.tall {
+            height: 380px;
+        }
+    </style>
+</head>
+<body class="overflow-x-hidden">
+    <div class="flex min-h-screen">
+        <aside id="sidebar" class="w-64 flex-col fixed inset-y-0 left-0 transform -translate-x-full md:translate-x-0 z-50 sidebar">
+            <div class="p-6 flex items-center space-x-4 border-b border-gray-700/50">
+                <div class="p-2 bg-amber-500 rounded-xl shadow-lg shadow-amber-500/30">
+                    <svg class="h-8 w-8 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z" />
+                    </svg>
+                </div>
+                <h1 class="text-xl font-bold text-white tracking-wider leading-tight">Optimisation<br>OCP PV</h1>
+            </div>
+            <nav class="flex-1 px-4 py-8 space-y-3">
+                <a href="index.html" class="sidebar-link flex items-center px-4 py-3 text-slate-300 rounded-xl">
+                    <span class="mr-4">D</span><span>Dashboard</span>
+                </a>
+                <a href="Solar Profitability.html" class="sidebar-link flex items-center px-4 py-3 text-slate-300 rounded-xl">
+                    <span class="mr-4">S</span><span>Solar Profitability</span>
+                </a>
+                <a href="Storage Cost.html" class="sidebar-link flex items-center px-4 py-3 text-slate-300 rounded-xl">
+                    <span class="mr-4">B</span><span>Storage Cost</span>
+                </a>
+                <a href="Full Analysis.html" class="sidebar-link flex items-center px-4 py-3 text-slate-300 rounded-xl">
+                    <span class="mr-4">A</span><span>Full Analysis</span>
+                </a>
+                <a href="Battery Parameters.html" class="sidebar-link flex items-center px-4 py-3 text-slate-300 rounded-xl">
+                    <span class="mr-4">P</span><span>Parameters</span>
+                </a>
+                <a href="OCP EMS Simulator.html" class="sidebar-link active flex items-center px-4 py-3 text-slate-300 rounded-xl">
+                    <span class="mr-4">O</span><span>OCP EMS Simulator</span>
+                </a>
+            </nav>
+        </aside>
+
+        <div class="flex-1 md:ml-64">
+            <header class="bg-white/85 backdrop-blur-md sticky top-0 z-30 border-b border-slate-200/70">
+                <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                    <div class="py-4 flex items-center justify-between">
+                        <div class="flex items-center">
+                            <button id="hamburger-button" class="text-slate-500 hover:text-emerald-600 md:hidden p-2 rounded-lg hover:bg-slate-100 transition-colors">
+                                <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
+                            </button>
+                            <p class="text-sm font-semibold text-slate-500 ml-4 md:ml-0">OCP EMS Simulator</p>
+                        </div>
+                        <span class="hidden sm:inline-flex items-center rounded-full bg-emerald-50 px-3 py-1 text-sm font-semibold text-emerald-700 ring-1 ring-emerald-200">Backend connected / EMS study engine ready</span>
+                    </div>
+                </div>
+            </header>
+
+            <main class="p-4 sm:p-6 lg:p-8">
+                <div class="max-w-7xl mx-auto space-y-8">
+                    <section class="page-card p-6 md:p-8 overflow-hidden relative">
+                        <div class="absolute inset-x-0 top-0 h-1.5 bg-gradient-to-r from-amber-400 via-emerald-500 to-indigo-500"></div>
+                        <div class="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-6">
+                            <div>
+                                <p class="text-sm font-bold uppercase tracking-wide text-emerald-700">Industrial PV-BESS EMS study</p>
+                                <h1 class="text-3xl md:text-5xl font-extrabold text-slate-900 mt-3 tracking-tight">OCP Benguerir EMS Simulator</h1>
+                                <p class="text-lg text-slate-600 mt-4 max-w-4xl leading-relaxed">PV-BESS energy management simulation for 67 MWc PV, 25 MW / 125 MWh BESS, and 25 MW continuous industrial load.</p>
+                            </div>
+                            <span class="sm:hidden inline-flex w-fit items-center rounded-full bg-emerald-50 px-3 py-1 text-sm font-semibold text-emerald-700 ring-1 ring-emerald-200">Backend connected</span>
+                        </div>
+                    </section>
+
+                    <section>
+                        <div class="flex items-center justify-between mb-5">
+                            <h2 class="text-2xl font-bold text-slate-900">Project Assumptions</h2>
+                            <p class="hidden md:block text-sm text-slate-500">OCP Benguerir / Gantour baseline</p>
+                        </div>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+                            <div class="assumption-card"><span class="icon-tile bg-amber-500">PV</span><p class="text-sm text-slate-500 mt-4">PV Capacity</p><p class="text-2xl font-extrabold text-slate-900">67 MWc</p><p class="text-xs text-slate-500 mt-1">Installed solar plant capacity.</p></div>
+                            <div class="assumption-card"><span class="icon-tile bg-indigo-500">MW</span><p class="text-sm text-slate-500 mt-4">BESS Power</p><p class="text-2xl font-extrabold text-slate-900">25 MW</p><p class="text-xs text-slate-500 mt-1">Maximum charge/discharge power.</p></div>
+                            <div class="assumption-card"><span class="icon-tile bg-blue-500">E</span><p class="text-sm text-slate-500 mt-4">BESS Capacity</p><p class="text-2xl font-extrabold text-slate-900">125 MWh</p><p class="text-xs text-slate-500 mt-1">Nominal storage energy capacity.</p></div>
+                            <div class="assumption-card"><span class="icon-tile bg-emerald-500">L</span><p class="text-sm text-slate-500 mt-4">OCP Load</p><p class="text-2xl font-extrabold text-slate-900">25 MW</p><p class="text-xs text-slate-500 mt-1">Continuous industrial demand.</p></div>
+                            <div class="assumption-card"><span class="icon-tile bg-slate-700">S</span><p class="text-sm text-slate-500 mt-4">Min SoC</p><p class="text-2xl font-extrabold text-slate-900">10%</p><p class="text-xs text-slate-500 mt-1">Security reserve threshold.</p></div>
+                            <div class="assumption-card"><span class="icon-tile bg-rose-500">P</span><p class="text-sm text-slate-500 mt-4">Peak Tariff</p><p class="text-2xl font-extrabold text-slate-900">1.3645</p><p class="text-xs text-slate-500 mt-1">DH/kWh during peak hours.</p></div>
+                            <div class="assumption-card"><span class="icon-tile bg-violet-500">F</span><p class="text-sm text-slate-500 mt-4">Full Tariff</p><p class="text-2xl font-extrabold text-slate-900">0.9736</p><p class="text-xs text-slate-500 mt-1">DH/kWh during full hours.</p></div>
+                            <div class="assumption-card"><span class="icon-tile bg-slate-800">O</span><p class="text-sm text-slate-500 mt-4">Off-Peak Tariff</p><p class="text-2xl font-extrabold text-slate-900">0.7131</p><p class="text-xs text-slate-500 mt-1">DH/kWh during off-peak hours.</p></div>
+                        </div>
+                    </section>
+
+                    <section class="grid grid-cols-1 xl:grid-cols-12 gap-8">
+                        <div class="page-card p-6 md:p-7 xl:col-span-5">
+                            <div class="flex items-start justify-between gap-4 mb-6">
+                                <div>
+                                    <h2 class="text-2xl font-bold text-slate-900">Annual PV Profile Input</h2>
+                                    <p class="text-sm text-slate-600 mt-2 leading-relaxed">Upload CSV or Excel file. If consumption is missing, the tool generates the constant OCP load of 25 MWh per hour.</p>
+                                </div>
+                                <span class="icon-tile bg-emerald-500">CSV</span>
+                            </div>
+                            <div class="space-y-5">
+                                <div>
+                                    <label for="csvFileInput" class="input-label">Upload CSV</label>
+                                    <input id="csvFileInput" type="file" accept=".csv,.xlsx,.xls,text/csv" class="input-field">
+                                    <p id="selectedFileStatus" class="text-sm text-slate-500 mt-2 whitespace-pre-line">No file selected.</p>
+                                </div>
+                                <div>
+                                    <label for="csv-text" class="input-label">Or paste CSV data</label>
+                                    <textarea id="csv-text" class="input-field min-h-56 font-mono text-sm" placeholder="timestamp,production_mwh,consumption_mwh&#10;2025-01-01T00:00:00,0,25&#10;2025-01-01T01:00:00,0,25&#10;2025-01-01T12:00:00,42.5,25"></textarea>
+                                </div>
+                                <div class="bg-slate-50 border border-slate-200 rounded-xl p-4">
+                                    <p class="font-semibold text-sm text-slate-700 mb-2">Sample expected format</p>
+                                    <pre class="text-xs overflow-x-auto text-slate-700 leading-relaxed">timestamp,production_mwh,consumption_mwh
+2025-01-01T00:00:00,0,25
+2025-01-01T01:00:00,0,25
+2025-01-01T12:00:00,42.5,25</pre>
+                                </div>
+                                <label class="flex items-start gap-3 text-sm text-slate-600 bg-amber-50 border border-amber-100 rounded-xl p-4">
+                                    <input id="allow-short-profile" type="checkbox" class="mt-1 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500">
+                                    <span><strong class="text-slate-800">Allow short sample profiles for testing.</strong> Real annual studies should use 8760 hourly rows.</span>
+                                </label>
+                                <button id="run-study-button" class="primary-button w-full py-3.5 px-4">
+                                    Run OCP EMS Study
+                                </button>
+                                <div id="message-box" class="hidden rounded-xl border p-4 text-sm font-medium"></div>
+                            </div>
+                        </div>
+
+                        <div class="xl:col-span-7 space-y-8">
+                            <section id="empty-state" class="page-card p-8 text-center">
+                                <div class="mx-auto mb-5 icon-tile bg-slate-800">EMS</div>
+                                <h2 class="text-2xl font-bold text-slate-900">No simulation yet</h2>
+                                <p class="text-slate-600 mt-3 max-w-xl mx-auto">Upload or paste a CSV profile and run the EMS study to display scenario results.</p>
+                            </section>
+
+                            <section id="results-section" class="hidden space-y-8">
+                                <div class="page-card p-6 md:p-7">
+                                    <div class="flex items-center justify-between mb-5">
+                                        <h2 class="text-2xl font-bold text-slate-900">Profile Summary</h2>
+                                        <span class="text-xs font-semibold uppercase tracking-wide text-slate-500">Normalized input</span>
+                                    </div>
+                                    <div id="profile-summary" class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-4"></div>
+                                    <div id="profile-warnings" class="mt-4"></div>
+                                </div>
+
+                                <div class="page-card p-0 overflow-hidden">
+                                    <div class="h-1.5 bg-gradient-to-r from-emerald-500 via-amber-400 to-indigo-500"></div>
+                                    <div class="p-6 md:p-7">
+                                        <h2 class="text-2xl font-bold text-slate-900 mb-5">Recommended Scenario</h2>
+                                        <div id="recommended-scenario" class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4"></div>
+                                    </div>
+                                </div>
+
+                                <div class="page-card p-6 md:p-7">
+                                    <h2 class="text-2xl font-bold text-slate-900 mb-5">Key KPIs</h2>
+                                    <div id="kpi-cards" class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4"></div>
+                                </div>
+                            </section>
+                        </div>
+                    </section>
+
+                    <section id="charts-section" class="hidden space-y-6">
+                        <div class="page-card p-6 md:p-7">
+                            <h2 class="text-2xl font-bold text-slate-900">Visual EMS Analysis</h2>
+                            <p class="text-sm text-slate-600 mt-2 max-w-4xl">Hourly, monthly, and scenario-level charts explaining PV production, BESS operation, grid purchase, wheeling, curtailment, and economic performance.</p>
+                        </div>
+
+                        <div class="grid grid-cols-1 xl:grid-cols-2 gap-6">
+                            <div class="chart-card xl:col-span-2">
+                                <h3 class="text-lg font-bold text-slate-900">Annual Monthly Energy Balance</h3>
+                                <p class="text-sm text-slate-500 mt-1">Stacked monthly energy flows for the recommended EMS scenario.</p>
+                                <div class="chart-box tall mt-4"><canvas id="monthlyEnergyBalanceChart"></canvas></div>
+                            </div>
+                            <div class="chart-card">
+                                <h3 class="text-lg font-bold text-slate-900">Monthly PV Production vs Load</h3>
+                                <p class="text-sm text-slate-500 mt-1">Compares solar generation against OCP's continuous industrial demand.</p>
+                                <div class="chart-box mt-4"><canvas id="monthlyPvLoadChart"></canvas></div>
+                            </div>
+                            <div class="chart-card">
+                                <h3 class="text-lg font-bold text-slate-900">Battery SoC Profile</h3>
+                                <p class="text-sm text-slate-500 mt-1">Downsampled SoC trend. Security reserve: SoC must remain above 10%.</p>
+                                <div class="chart-box mt-4"><canvas id="socProfileChart"></canvas></div>
+                            </div>
+                            <div class="chart-card xl:col-span-2">
+                                <h3 class="text-lg font-bold text-slate-900">Daily/Hourly PV, Load, and Grid Purchase</h3>
+                                <p class="text-sm text-slate-500 mt-1">First 168 hours showing PV, OCP load, grid supply, and BESS discharge.</p>
+                                <div class="chart-box tall mt-4"><canvas id="hourlyOperationChart"></canvas></div>
+                            </div>
+                            <div class="chart-card xl:col-span-2">
+                                <h3 class="text-lg font-bold text-slate-900">Battery Charge vs Discharge</h3>
+                                <p class="text-sm text-slate-500 mt-1">First 168 hours showing PV charging, grid charging, and battery discharge.</p>
+                                <div class="chart-box tall mt-4"><canvas id="batteryChargeDischargeChart"></canvas></div>
+                            </div>
+                            <div class="chart-card">
+                                <h3 class="text-lg font-bold text-slate-900">Scenario Annual Net Gain Comparison</h3>
+                                <p class="text-sm text-slate-500 mt-1">Economic value by strategy.</p>
+                                <div class="chart-box mt-4"><canvas id="scenarioGainChart"></canvas></div>
+                            </div>
+                            <div class="chart-card">
+                                <h3 class="text-lg font-bold text-slate-900">Scenario Grid Purchase Comparison</h3>
+                                <p class="text-sm text-slate-500 mt-1">Energy bought from the grid under each EMS strategy.</p>
+                                <div class="chart-box mt-4"><canvas id="scenarioGridPurchaseChart"></canvas></div>
+                            </div>
+                            <div class="chart-card">
+                                <h3 class="text-lg font-bold text-slate-900">Scenario BESS Cycles Comparison</h3>
+                                <p class="text-sm text-slate-500 mt-1">Battery utilization intensity and lifetime impact.</p>
+                                <div class="chart-box mt-4"><canvas id="scenarioCyclesChart"></canvas></div>
+                            </div>
+                            <div class="chart-card">
+                                <h3 class="text-lg font-bold text-slate-900">Scenario Wheeling and Curtailment</h3>
+                                <p class="text-sm text-slate-500 mt-1">Shows whether surplus PV is valorized or lost.</p>
+                                <div class="chart-box mt-4"><canvas id="wheelingCurtailmentChart"></canvas></div>
+                            </div>
+                            <div class="chart-card xl:col-span-2">
+                                <h3 class="text-lg font-bold text-slate-900">Energy Flow Distribution</h3>
+                                <p class="text-sm text-slate-500 mt-1">Annual distribution of supply, export, and lost PV in the recommended scenario.</p>
+                                <div class="chart-box mt-4"><canvas id="energyFlowDistributionChart"></canvas></div>
+                            </div>
+                        </div>
+
+                        <div class="page-card p-6 md:p-7">
+                            <h2 class="text-2xl font-bold text-slate-900">EMS Interpretation</h2>
+                            <div id="ems-interpretation" class="mt-4 space-y-3 text-sm text-slate-700"></div>
+                        </div>
+                    </section>
+
+                    <section id="comparison-section" class="hidden page-card p-6 md:p-7">
+                        <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 mb-6">
+                            <div>
+                                <h2 class="text-2xl font-bold text-slate-900">Scenario Comparison</h2>
+                                <p class="text-sm text-slate-500 mt-1">Deterministic comparison from the EMS study engine.</p>
+                            </div>
+                            <div class="flex flex-col sm:flex-row gap-3">
+                                <button id="download-csv-button" class="secondary-button bg-slate-900 text-white py-2.5 px-4 hover:bg-slate-800">Download Scenario Comparison CSV</button>
+                                <button id="download-json-button" class="secondary-button bg-emerald-600 text-white py-2.5 px-4 hover:bg-emerald-700">Download Study Summary JSON</button>
+                            </div>
+                        </div>
+                        <div class="overflow-x-auto rounded-xl border border-slate-200">
+                            <table class="result-table min-w-full text-sm">
+                                <thead>
+                                    <tr>
+                                        <th>Scenario</th>
+                                        <th>Grid Purchase MWh</th>
+                                        <th>Battery Discharge MWh</th>
+                                        <th>Wheeling MWh</th>
+                                        <th>Curtailment MWh</th>
+                                        <th>PV Self-consumption %</th>
+                                        <th>PV Self-sufficiency %</th>
+                                        <th>Equivalent Cycles</th>
+                                        <th>Min SoC %</th>
+                                        <th>Annual Net Gain DH</th>
+                                        <th>Average Cost DH/kWh</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="scenario-table-body"></tbody>
+                            </table>
+                        </div>
+                    </section>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <div id="sidebar-overlay" class="fixed inset-0 bg-black bg-opacity-50 z-40 hidden md:hidden"></div>
+
+    <script>
+        const sidebar = document.getElementById('sidebar');
+        const hamburgerButton = document.getElementById('hamburger-button');
+        const overlay = document.getElementById('sidebar-overlay');
+
+        function toggleSidebar() {
+            sidebar.classList.toggle('-translate-x-full');
+            overlay.classList.toggle('hidden');
+        }
+
+        hamburgerButton.addEventListener('click', toggleSidebar);
+        overlay.addEventListener('click', toggleSidebar);
+    </script>
+    <script type="module" src="/src/ocpEmsSimulator.ts"></script>
+</body>
+</html>

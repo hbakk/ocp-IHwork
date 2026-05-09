@@ -1,0 +1,30 @@
+export interface AnnualKPI {
+  annualPVProductionMWh: number;
+  annualLoadMWh: number;
+  annualGridPurchaseMWh: number;
+  annualBatteryChargeMWh: number;
+  annualBatteryDischargeMWh: number;
+  annualWheelingMWh: number;
+  annualCurtailmentMWh: number;
+  pvSelfConsumptionRatePercent: number;
+  pvSelfSufficiencyRatePercent: number;
+  bessEquivalentCycles: number;
+  securityReserveViolationCount: number;
+  averageCostDhPerKWh: number;
+  annualNetGainDh: number;
+  pvSelfConsumptionRate: number;
+  pvSelfSufficiencyRate: number;
+  bessChargedEnergyMWh: number;
+  bessDischargedEnergyMWh: number;
+  gridPurchaseTotalMWh: number;
+  peakGridPurchaseAvoidedMWh: number;
+  annualEconomicGainDh: number;
+  minimumSocPercent: number;
+  maximumSocPercent: number;
+  equivalentBatteryCycles: number;
+  curtailmentRate: number;
+  wheelingEnergyMWh: number;
+  bessAvailabilityPercent: number;
+  securityReserveViolations: number;
+  emsModeSwitches: number;
+}

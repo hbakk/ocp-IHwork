@@ -1,0 +1,925 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Optimisation OCP PV | Projection des Coûts de Stockage</title>
+    <!-- Chargement de Tailwind CSS pour un style moderne et responsive -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Chargement de Chart.js pour les graphiques -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        /* Styles personnalisés pour améliorer l'apparence au-delà de Tailwind */
+        body {
+            font-family: 'Inter', sans-serif; /* Utilisation de la police Inter */
+            background-color: #e2e8f0; /* Couleur de fond légère */
+            color: #2d3748; /* Couleur de texte principale */
+            line-height: 1.6;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh; /* S'assurer que le corps prend au moins toute la hauteur de la fenêtre */
+            padding: 1rem; /* Espacement autour du contenu */
+        }
+        .container {
+            max-width: 1000px; /* Largeur maximale du conteneur */
+            width: 100%;
+            margin: auto;
+            padding: 2rem;
+            background: #ffffff; /* Fond blanc pour le conteneur principal */
+            border-radius: 1rem; /* Coins arrondis */
+            box-shadow: 0 10px 15px rgba(0, 0, 0, 0.1); /* Ombre portée douce */
+            border: 1px solid #cbd5e0; /* Bordure subtile */
+        }
+        h1, h2 {
+            color: #2c5282; /* Couleur des titres */
+            text-align: center;
+            margin-bottom: 1.5rem;
+            font-weight: 700; /* Gras pour les titres */
+        }
+        .form-group {
+            margin-bottom: 1.25rem;
+        }
+        label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 600; /* Gras pour les étiquettes */
+            color: #4a5568; /* Couleur de texte pour les étiquettes */
+        }
+        select, input[type="number"] {
+            width: 100%;
+            padding: 0.75rem;
+            border: 1px solid #a0aec0; /* Bordure des champs de saisie */
+            border-radius: 0.5rem; /* Coins arrondis pour les champs */
+            font-size: 1rem;
+            background-color: #edf2f7; /* Fond légèrement grisé pour les champs */
+            transition: border-color 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+        }
+        select:focus, input[type="number"]:focus {
+            border-color: #4299e1; /* Bordure bleue au focus */
+            box-shadow: 0 0 0 3px rgba(66, 153, 225, 0.5); /* Ombre au focus */
+            outline: none; /* Supprimer l'outline par défaut du navigateur */
+        }
+        /* Styles pour les boutons de calcul */
+        .calculate-button {
+            display: block;
+            width: 100%;
+            padding: 1rem;
+            background-image: linear-gradient(to right, #4299e1, #3182ce); /* Dégradé de bleu */
+            color: white;
+            border: none;
+            border-radius: 0.5rem; /* Coins arrondis */
+            cursor: pointer;
+            font-size: 1.125rem;
+            font-weight: 700;
+            transition: all 0.3s ease;
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.2); /* Ombre plus prononcée */
+            text-transform: uppercase; /* Texte en majuscules */
+            letter-spacing: 0.05em; /* Espacement des lettres */
+        }
+        .calculate-button:hover {
+            background-image: linear-gradient(to right, #3182ce, #2b6cb0); /* Dégradé plus foncé au survol */
+            transform: translateY(-3px) scale(1.01); /* Léger mouvement et zoom au survol */
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.3); /* Ombre plus grande au survol */
+        }
+        .calculate-button:active {
+            transform: translateY(0); /* Retour à la position normale au clic */
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+        }
+
+        .chart-container {
+            margin-top: 2.5rem;
+            padding: 1.5rem;
+            background-color: #f7fafc; /* Fond clair pour le conteneur du graphique */
+            border-radius: 0.75rem;
+            box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.06); /* Ombre intérieure */
+            border: 1px solid #e2e8f0; /* Bordure légère */
+            height: 400px; /* Hauteur fixe pour le graphique */
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+        #result {
+            margin-top: 1.5rem;
+            padding: 1.25rem;
+            background-color: #e0f2fe; /* Fond bleu très clair pour le résultat */
+            border-radius: 0.5rem;
+            text-align: center;
+            font-size: 1.1rem;
+            font-weight: 500;
+            color: #2c5282;
+            border: 1px solid #90cdf4; /* Bordure bleue claire */
+        }
+        .text-info {
+            font-size: 0.9rem;
+            color: #718096;
+            text-align: center;
+            margin-bottom: 1rem;
+        }
+        .section-separator {
+            border-top: 1px dashed #cbd5e0;
+            margin: 2.5rem 0;
+        }
+        .result-box {
+            background-color: #f0f9ff;
+            border: 1px solid #bfdbfe;
+            border-radius: 0.5rem;
+            padding: 1.5rem;
+            margin-top: 1.5rem;
+            text-align: left;
+        }
+        .result-box p {
+            margin-bottom: 0.5rem;
+            font-size: 1rem;
+        }
+        .result-box strong {
+            color: #2c5282;
+        }
+        .tab-buttons {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 1.5rem;
+        }
+        .tab-button {
+            padding: 0.75rem 1.5rem;
+            border: 1px solid #cbd5e0;
+            background-color: #e2e8f0;
+            cursor: pointer;
+            font-weight: 600;
+            color: #4a5568;
+            transition: background-color 0.2s ease, color 0.2s ease;
+        }
+        .tab-button:first-child {
+            border-top-left-radius: 0.5rem;
+            border-bottom-left-radius: 0.5rem;
+            border-right: none;
+        }
+        .tab-button:last-child {
+            border-top-right-radius: 0.5rem;
+            border-bottom-right-radius: 0.5rem;
+            border-left: none;
+        }
+        .tab-button.active {
+            background-color: #4299e1;
+            color: white;
+            border-color: #4299e1;
+        }
+        .graph-section {
+            margin-top: 2.5rem;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>Projection des Coûts de Stockage d'Énergie</h1>
+        <p class="text-info">Estimez le coût futur des technologies de stockage d'énergie en utilisant les courbes d'expérience du document "Monetizing Energy Storage" (Chapitre 4).</p>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div class="form-group">
+                <label for="technologySelect">Sélectionnez une technologie :</label>
+                <select id="technologySelect" class="rounded-md">
+                    <option value="lithiumIonEV">Lithium-ion (Packs VE)</option>
+                    <option value="lithiumIonUtility">Lithium-ion (Systèmes utilitaires)</option>
+                    <option value="pumpedHydro">Hydro-pompage (Systèmes)</option>
+                    <option value="vanadiumRedoxFlow">Vanadium Redox-Flow (Systèmes utilitaires)</option>
+                    <option value="electrolysis">Électrolyse (Utilitaire)</option>
+                    <option value="fuelCells">Piles à combustible (Résidentiel)</option>
+                    <option value="leadAcid">Plomb-acide (Multiple)</option>
+                    <option value="lithiumIonResidential">Lithium-ion (Résidentiel)</option>
+                    <option value="nickelMetalHydride">Nickel-métal hydrure (VHE)</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="futureCapacity">Capacité cumulée future (GWh) :</label>
+                <input type="number" id="futureCapacity" value="1000" min="1" step="100" class="rounded-md">
+            </div>
+        </div>
+        
+        <button onclick="projectCost()" class="mt-6 rounded-md calculate-button">Projetez le coût futur</button>
+
+        <div id="result" class="rounded-md">
+            <p>Sélectionnez une technologie et une capacité future pour voir la projection des coûts.</p>
+        </div>
+
+        <div class="chart-container rounded-md">
+            <h2 class="mb-4 text-center">Courbe d'expérience de la technologie sélectionnée</h2>
+            <canvas id="experienceCurveChart"></canvas>
+        </div>
+
+        <div class="section-separator"></div>
+
+        <h2>Calcul du Coût Actualisé de l'Énergie Stockée (LCOS) et du Coût Annuitisé de la Capacité (ACC)</h2>
+        <p class="text-info">Utilisez les paramètres ci-dessous pour estimer le LCOS et l'ACC d'un système de stockage d'énergie.</p>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div class="form-group">
+                <label for="systemSizeMw">Taille du système (MW) :</label>
+                <input type="number" id="systemSizeMw" value="10" min="0.1" step="0.1" class="rounded-md">
+            </div>
+            <div class="form-group">
+                <label for="dischargeDurationHours">Durée de décharge (heures) :</label>
+                <input type="number" id="dischargeDurationHours" value="4" min="0.1" step="0.1" class="rounded-md">
+            </div>
+            <div class="form-group">
+                <label for="annualCycles">Cycles annuels (#) :</label>
+                <input type="number" id="annualCycles" value="300" min="1" step="1" class="rounded-md">
+            </div>
+            <div class="form-group">
+                <label for="electricityPurchasePrice">Prix d'achat de l'électricité (USD/MWh) :</label>
+                <input type="number" id="electricityPurchasePrice" value="50" min="0" step="1" class="rounded-md">
+            </div>
+            <div class="form-group">
+                <label for="electricityPriceEscalator">Escalade du prix de l'électricité (% p.a.) :</label>
+                <input type="number" id="electricityPriceEscalator" value="0" min="-10" max="10" step="0.1" class="rounded-md">
+            </div>
+            <div class="form-group">
+                <label for="systemCostPerKwh">Coût du système (USD/kWh) :</label>
+                <input type="number" id="systemCostPerKwh" value="362.5" min="1" step="0.1" class="rounded-md">
+            </div>
+            <div class="form-group">
+                <label for="systemLifetimeYears">Durée de vie du système (années) :</label>
+                <input type="number" id="systemLifetimeYears" value="20" min="1" step="1" class="rounded-md">
+            </div>
+            <div class="form-group">
+                <label for="discountRateLcos">Taux d'actualisation (%) :</label>
+                <input type="number" id="discountRateLcos" value="8" min="0" step="0.1" class="rounded-md">
+            </div>
+            <div class="form-group">
+                <label for="roundTripEfficiency">Efficacité aller-retour (%) :</label>
+                <input type="number" id="roundTripEfficiency" value="85" min="1" max="100" step="1" class="rounded-md">
+            </div>
+            <div class="form-group">
+                <label for="annualOMCostPerKwh">Coût O&M annuel (USD/kWh/an) :</label>
+                <input type="number" id="annualOMCostPerKwh" value="5" min="0" step="0.1" class="rounded-md">
+            </div>
+        </div>
+        
+        <button onclick="calculateLCOSAndACC()" class="mt-6 rounded-md calculate-button">Calculer LCOS et ACC</button>
+
+        <div id="lcosAccResult" class="result-box">
+            <p>Entrez les paramètres ci-dessus et cliquez sur "Calculer LCOS et ACC".</p>
+        </div>
+
+        <div class="section-separator"></div>
+
+        <div class="graph-section">
+            <h2 class="text-center">Probabilité du LCOS/ACC le plus bas et Médiane</h2>
+            <div class="tab-buttons">
+                <button class="tab-button active" onclick="showGraph('lcosGraph', this)">Lowest LCOS</button>
+                <button class="tab-button" onclick="showGraph('accGraph', this)">Lowest ACC</button>
+            </div>
+            <div id="lcosGraph" class="chart-container rounded-md">
+                <canvas id="lowestLCOSChart"></canvas>
+            </div>
+            <div id="accGraph" class="chart-container rounded-md hidden">
+                <canvas id="lowestACCChart"></canvas>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        // Définition des données des technologies basées sur les figures 4.1 et 4.12 du document.
+        // Ces données sont des exemples simplifiés et devraient être plus complètes pour une application de production.
+        const technologiesData = {
+            lithiumIonEV: {
+                name: "Lithium-ion (Packs VE)",
+                experienceRate: 0.24, // Taux d'expérience de 24%
+                historicalData: [
+                    { capacity: 0.1, price: 1000 },
+                    { capacity: 1, price: 500 },
+                    { capacity: 10, price: 250 },
+                    { capacity: 100, price: 150 },
+                    { capacity: 500, price: 132 } // Donnée approximative pour 2021
+                ],
+                unit: "USD/kWh"
+            },
+            lithiumIonUtility: {
+                name: "Lithium-ion (Systèmes utilitaires)",
+                experienceRate: 0.19, // Taux d'expérience de 19%
+                historicalData: [
+                    { capacity: 0.1, price: 1500 },
+                    { capacity: 1, price: 700 },
+                    { capacity: 10, price: 400 },
+                    { capacity: 20, price: 350 } // Donnée approximative pour 2020
+                ],
+                unit: "USD/kWh"
+            },
+            pumpedHydro: {
+                name: "Hydro-pompage (Systèmes)",
+                experienceRate: -0.03, // Taux d'expérience négatif de -3% (le coût augmente)
+                historicalData: [
+                    { capacity: 100, price: 300 },
+                    { capacity: 158, price: 300 } // Donnée approximative pour 2020
+                ],
+                unit: "USD/kWh"
+            },
+            vanadiumRedoxFlow: {
+                name: "Vanadium Redox-Flow (Systèmes utilitaires)",
+                experienceRate: 0.14, // Taux d'expérience de 14%
+                historicalData: [
+                    { capacity: 0.01, price: 1000 },
+                    { capacity: 0.1, price: 800 },
+                    { capacity: 1, price: 600 }
+                ],
+                unit: "USD/kWh"
+            },
+            electrolysis: {
+                name: "Électrolyse (Utilitaire)",
+                experienceRate: 0.20, // Taux d'expérience de 20%
+                historicalData: [
+                    { capacity: 0.001, price: 10000 },
+                    { capacity: 0.01, price: 8000 },
+                    { capacity: 0.1, price: 5000 },
+                    { capacity: 1, price: 2000 }
+                ],
+                unit: "USD/kW" // Unité pour la puissance (kW)
+            },
+            fuelCells: {
+                name: "Piles à combustible (Résidentiel)",
+                experienceRate: 0.17, // Taux d'expérience de 17%
+                historicalData: [
+                    { capacity: 0.001, price: 5000 },
+                    { capacity: 0.01, price: 3000 },
+                    { capacity: 0.1, price: 1500 }
+                ],
+                unit: "USD/kW" // Unité pour la puissance (kW)
+            },
+            leadAcid: {
+                name: "Plomb-acide (Multiple)",
+                experienceRate: 0.04, // Taux d'expérience de 4%
+                historicalData: [
+                    { capacity: 10, price: 300 },
+                    { capacity: 100, price: 250 }
+                ],
+                unit: "USD/kWh"
+            },
+            lithiumIonResidential: {
+                name: "Lithium-ion (Résidentiel)",
+                experienceRate: 0.13, // Taux d'expérience de 13%
+                historicalData: [
+                    { capacity: 0.1, price: 1000 },
+                    { capacity: 1, price: 800 },
+                    { capacity: 10, price: 600 }
+                ],
+                unit: "USD/kWh"
+            },
+            nickelMetalHydride: {
+                name: "Nickel-métal hydrure (VHE)",
+                experienceRate: 0.11, // Taux d'expérience de 11%
+                historicalData: [
+                    { capacity: 1, price: 250 },
+                    { capacity: 10, price: 200 }
+                ],
+                unit: "USD/kWh"
+            }
+        };
+
+        let experienceChart; // Variable globale pour stocker l'instance du graphique Chart.js
+        let lowestLCOSChart;
+        let lowestACCChart;
+
+        // Données approximatives pour les graphiques Lowest LCOS et Lowest ACC, basées sur les images fournies.
+        // Ces données sont simplifiées et ne représentent pas la complexité exacte des graphiques originaux.
+        const lowestLCOSData = {
+            labels: ['2015', '2020', '2025', '2030', '2035', '2040'],
+            datasets: [
+                {
+                    label: 'Pumped Hydro',
+                    data: [95, 90, 80, 40, 20, 15], // Probabilité (%)
+                    backgroundColor: '#63b3ed', // Bleu clair
+                    stack: 'Stack 0',
+                },
+                {
+                    label: 'Lithium-ion',
+                    data: [3, 8, 15, 45, 60, 65], // Probabilité (%)
+                    backgroundColor: '#fc8181', // Rouge clair
+                    stack: 'Stack 0',
+                },
+                {
+                    label: 'Vanadium flow',
+                    data: [1, 1, 3, 8, 15, 15], // Probabilité (%)
+                    backgroundColor: '#f6ad55', // Orange
+                    stack: 'Stack 0',
+                },
+                {
+                    label: 'Lead-acid',
+                    data: [1, 1, 1, 2, 3, 3], // Probabilité (%)
+                    backgroundColor: '#ecc94b', // Jaune
+                    stack: 'Stack 0',
+                },
+                {
+                    label: 'Autres',
+                    data: [0, 0, 1, 5, 2, 2], // Probabilité (%)
+                    backgroundColor: '#a0aec0', // Gris
+                    stack: 'Stack 0',
+                },
+                {
+                    label: 'Médiane LCOS (USD/MWh)',
+                    data: [130, 120, 100, 80, 70, 65], // Valeur médiane
+                    borderColor: 'black',
+                    borderWidth: 2,
+                    type: 'line', // Ceci est une ligne, pas une barre
+                    fill: false,
+                    yAxisID: 'y1', // Utilise l'axe Y secondaire
+                    pointRadius: 5,
+                    pointBackgroundColor: 'black',
+                }
+            ]
+        };
+
+        const lowestACCData = {
+            labels: ['2015', '2020', '2025', '2030', '2035', '2040'],
+            datasets: [
+                {
+                    label: 'Pumped Hydro',
+                    data: [95, 90, 70, 30, 10, 5], // Probabilité (%)
+                    backgroundColor: '#63b3ed', // Bleu clair
+                    stack: 'Stack 0',
+                },
+                {
+                    label: 'Lithium-ion',
+                    data: [3, 8, 25, 55, 70, 75], // Probabilité (%)
+                    backgroundColor: '#fc8181', // Rouge clair
+                    stack: 'Stack 0',
+                },
+                {
+                    label: 'Vanadium flow',
+                    data: [1, 1, 3, 8, 15, 15], // Probabilité (%)
+                    backgroundColor: '#f6ad55', // Orange
+                    stack: 'Stack 0',
+                },
+                {
+                    label: 'Lead-acid',
+                    data: [1, 1, 1, 2, 3, 3], // Probabilité (%)
+                    backgroundColor: '#ecc94b', // Jaune
+                    stack: 'Stack 0',
+                },
+                {
+                    label: 'Autres',
+                    data: [0, 0, 1, 5, 2, 2], // Probabilité (%)
+                    backgroundColor: '#a0aec0', // Gris
+                    stack: 'Stack 0',
+                },
+                {
+                    label: 'Médiane ACC (USD/kW-year)',
+                    data: [190, 180, 160, 140, 130, 120], // Valeur médiane
+                    borderColor: 'black',
+                    borderWidth: 2,
+                    type: 'line', // Ceci est une ligne, pas une barre
+                    fill: false,
+                    yAxisID: 'y1', // Utilise l'axe Y secondaire
+                    pointRadius: 5,
+                    pointBackgroundColor: 'black',
+                }
+            ]
+        };
+
+
+        /**
+         * Met à jour ou initialise le graphique de la courbe d'expérience.
+         * @param {string} technologyId - L'identifiant de la technologie sélectionnée.
+         */
+        function updateChart(technologyId) {
+            const tech = technologiesData[technologyId];
+            if (!tech) return; // Si la technologie n'existe pas, ne rien faire.
+
+            // Extraction des données historiques pour le graphique
+            const historicalPoints = tech.historicalData.map(d => ({ x: d.capacity, y: d.price }));
+
+            // Calcul du facteur de normalisation 'A' et de l'exposant 'b' pour la formule de la courbe d'expérience:
+            // P(x) = A * x^(-b)
+            // où P est le prix, x est la capacité cumulée, A est une constante, et b est lié au taux d'expérience.
+            // b = -log2(1 - experienceRate)
+            const b = -Math.log2(1 - tech.experienceRate);
+            
+            // Calcul de 'A' en utilisant le premier point de données historique
+            const initialCapacity = tech.historicalData[0].capacity;
+            const initialPrice = tech.historicalData[0].price;
+            const A = initialPrice / Math.pow(initialCapacity, -b);
+
+            // Génération de points pour la courbe d'expérience projetée (ligne continue)
+            const projectedCapacities = [];
+            const projectedPrices = [];
+            // Génère des points sur une large plage pour que la courbe soit bien visible
+            for (let i = 0.01; i <= 2000; i += (i < 1 ? 0.01 : (i < 10 ? 0.1 : (i < 100 ? 1 : 10)))) {
+                 projectedCapacities.push(i);
+                 projectedPrices.push(A * Math.pow(i, -b));
+            }
+
+
+            const ctx = document.getElementById('experienceCurveChart').getContext('2d');
+
+            // Détruit l'ancien graphique s'il existe pour éviter les superpositions
+            if (experienceChart) {
+                experienceChart.destroy();
+            }
+
+            // Crée une nouvelle instance de Chart.js
+            experienceChart = new Chart(ctx, {
+                type: 'scatter', // Utilisation d'un graphique de dispersion
+                data: {
+                    datasets: [{
+                        label: `Données historiques (${tech.name})`,
+                        data: historicalPoints,
+                        backgroundColor: 'rgba(66, 153, 225, 0.8)', // Couleur des points historiques (bleu)
+                        borderColor: 'rgba(66, 153, 225, 1)',
+                        pointRadius: 6, // Taille des points
+                        pointHoverRadius: 8, // Taille des points au survol
+                        showLine: false // Ne pas relier les points historiques directement
+                    },
+                    {
+                        label: `Courbe d'expérience projetée (Taux: ${ (tech.experienceRate * 100).toFixed(1)}%)`,
+                        data: projectedCapacities.map((cap, index) => ({ x: cap, y: projectedPrices[index] })),
+                        borderColor: 'rgba(237, 137, 54, 1)', // Couleur de la courbe projetée (orange)
+                        backgroundColor: 'rgba(237, 137, 54, 0.2)',
+                        borderWidth: 2,
+                        pointRadius: 0, // Pas de points sur la ligne projetée
+                        showLine: true,
+                        fill: false // Ne pas remplir la zone sous la ligne
+                    },
+                    {
+                        label: 'Point de projection', // Nouveau dataset pour le point projeté
+                        data: [], // Sera rempli dynamiquement
+                        backgroundColor: '#10b981', // Vert pour le point projeté
+                        borderColor: '#059669',
+                        pointRadius: 10, // Plus grand pour le point projeté
+                        pointHoverRadius: 12,
+                        showLine: false
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false, // Permet de définir une hauteur fixe pour le graphique
+                    scales: {
+                        x: {
+                            type: 'logarithmic', // Échelle logarithmique pour l'axe X (capacité)
+                            title: {
+                                display: true,
+                                text: 'Capacité cumulée installée (GWh)',
+                                font: { size: 14, weight: 'bold' }
+                            },
+                            min: 0.01, // Minimum pour l'échelle logarithmique
+                            max: 2000, // Maximum pour la projection sur le graphique
+                            ticks: {
+                                callback: function(value, index, values) {
+                                    // Afficher les étiquettes pour des valeurs spécifiques pour la lisibilité
+                                    if (value === 0.01 || value === 0.1 || value === 1 || value === 10 || value === 100 || value === 1000 || value === 2000) {
+                                        return value;
+                                    }
+                                }
+                            }
+                        },
+                        y: {
+                            type: 'logarithmic', // Échelle logarithmique pour l'axe Y (prix)
+                            title: {
+                                display: true,
+                                text: `Prix du produit (${tech.unit})`,
+                                font: { size: 14, weight: 'bold' }
+                            },
+                            min: 10, // Minimum pour l'échelle logarithmique
+                            max: 20000, // Maximum pour la projection sur le graphique
+                            ticks: {
+                                callback: function(value, index, values) {
+                                    // Afficher les étiquettes pour des valeurs spécifiques
+                                    if (value === 10 || value === 100 || value === 1000 || value === 10000) {
+                                        return value;
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    plugins: {
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    // Personnalisation de l'affichage de l'info-bulle
+                                    return `Capacité: ${context.parsed.x.toFixed(2)} GWh, Prix: ${context.parsed.y.toFixed(2)} ${tech.unit}`;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        /**
+         * Calcule et affiche le coût projeté pour la technologie sélectionnée.
+         */
+        function projectCost() {
+            const selectedTechId = document.getElementById('technologySelect').value;
+            const futureCapacity = parseFloat(document.getElementById('futureCapacity').value);
+
+            const tech = technologiesData[selectedTechId];
+
+            // Validation des entrées
+            if (!tech || isNaN(futureCapacity) || futureCapacity <= 0) {
+                document.getElementById('result').innerHTML = `<p class="text-red-700">Veuillez entrer des valeurs valides pour la capacité future.</p>`;
+                return;
+            }
+
+            // Récupérer le dernier point de données historique pour le calcul de base
+            const lastHistoricalData = tech.historicalData[tech.historicalData.length - 1];
+            const currentCapacity = lastHistoricalData.capacity;
+            const currentPrice = lastHistoricalData.price;
+            const experienceRate = tech.experienceRate;
+
+            // Formule de la courbe d'expérience (Learning Curve) :
+            // P_future = P_current * (C_future / C_current)^(-log2(1 - experienceRate))
+            // où P_future est le prix futur, P_current est le prix actuel,
+            // C_future est la capacité cumulée future, C_current est la capacité cumulée actuelle,
+            // et experienceRate est le taux d'expérience (réduction de coût pour chaque doublement de capacité).
+            const b = -Math.log2(1 - experienceRate); // Calcul de l'exposant 'b'
+            const projectedPrice = currentPrice * Math.pow(futureCapacity / currentCapacity, -b);
+
+            // Affichage du résultat
+            document.getElementById('result').innerHTML = `
+                <p>Le coût projeté pour la technologie <strong>${tech.name}</strong> à une capacité cumulée de <strong>${futureCapacity} GWh</strong> est d'environ <strong>${projectedPrice.toFixed(2)} ${tech.unit}</strong>.</p>
+                <p class="text-sm text-gray-700 mt-2">Basé sur un taux d'expérience de ${(experienceRate * 100).toFixed(1)}%.</p>
+            `;
+
+            // Mettre à jour le dataset du point de projection
+            experienceChart.data.datasets[2].data = [{ x: futureCapacity, y: projectedPrice }];
+            experienceChart.update(); // Met à jour le graphique pour afficher le nouveau point
+        }
+
+        /**
+         * Calcule et affiche le LCOS et l'ACC.
+         */
+        function calculateLCOSAndACC() {
+            const systemSizeMw = parseFloat(document.getElementById('systemSizeMw').value);
+            const dischargeDurationHours = parseFloat(document.getElementById('dischargeDurationHours').value);
+            const annualCycles = parseFloat(document.getElementById('annualCycles').value);
+            const electricityPurchasePrice = parseFloat(document.getElementById('electricityPurchasePrice').value); // USD/MWh
+            const electricityPriceEscalator = parseFloat(document.getElementById('electricityPriceEscalator').value) / 100; // % p.a.
+            const systemCostPerKwh = parseFloat(document.getElementById('systemCostPerKwh').value); // USD/kWh
+            const systemLifetimeYears = parseFloat(document.getElementById('systemLifetimeYears').value);
+            const discountRateLcos = parseFloat(document.getElementById('discountRateLcos').value) / 100; // % p.a.
+            const roundTripEfficiency = parseFloat(document.getElementById('roundTripEfficiency').value) / 100; // %
+            const annualOMCostPerKwh = parseFloat(document.getElementById('annualOMCostPerKwh').value); // USD/kWh/year
+
+            // Validation des entrées
+            if (isNaN(systemSizeMw) || isNaN(dischargeDurationHours) || isNaN(annualCycles) || isNaN(electricityPurchasePrice) || 
+                isNaN(electricityPriceEscalator) || isNaN(systemCostPerKwh) || isNaN(systemLifetimeYears) || 
+                isNaN(discountRateLcos) || isNaN(roundTripEfficiency) || isNaN(annualOMCostPerKwh) ||
+                systemSizeMw <= 0 || dischargeDurationHours <= 0 || annualCycles <= 0 || systemLifetimeYears <= 0 || roundTripEfficiency <= 0) {
+                document.getElementById('lcosAccResult').innerHTML = `<p class="text-red-700">Veuillez entrer des valeurs valides pour tous les paramètres.</p>`;
+                return;
+            }
+
+            // 1. Calcul du Coût Annuitisé de la Capacité (ACC)
+            // Coût d'investissement total (en USD)
+            const totalCapitalCost = systemSizeMw * dischargeDurationHours * 1000 * systemCostPerKwh; // Convertir MW-h en kW-h
+
+            // Facteur de Récupération du Capital (CRF)
+            let crf;
+            if (discountRateLcos === 0) {
+                crf = 1 / systemLifetimeYears; // Cas spécial pour taux d'actualisation de 0
+            } else {
+                crf = (discountRateLcos * Math.pow(1 + discountRateLcos, systemLifetimeYears)) / (Math.pow(1 + discountRateLcos, systemLifetimeYears) - 1);
+            }
+            
+            const acc = totalCapitalCost * crf; // USD/an
+
+            // 2. Calcul du Coût Actualisé de l'Énergie Stockée (LCOS)
+            let totalPresentValueOfCosts = totalCapitalCost; // Le coût d'investissement initial est déjà en valeur actuelle
+
+            // Coût annuel d'opération et maintenance (O&M)
+            const annualOMCostTotal = systemSizeMw * dischargeDurationHours * 1000 * annualOMCostPerKwh; // USD/an
+
+            // Calcul de la valeur actuelle des coûts annuels (O&M et achat d'électricité)
+            for (let year = 1; year <= systemLifetimeYears; year++) {
+                // Coût O&M actualisé
+                totalPresentValueOfCosts += annualOMCostTotal / Math.pow(1 + discountRateLcos, year);
+
+                // Coût d'achat d'électricité actualisé avec escalade
+                const currentYearElectricityPrice = electricityPurchasePrice * Math.pow(1 + electricityPriceEscalator, year - 1); // USD/MWh
+                const currentYearElectricityCost = currentYearElectricityPrice * systemSizeMw * dischargeDurationHours * annualCycles; // USD/an
+                totalPresentValueOfCosts += currentYearElectricityCost / Math.pow(1 + discountRateLcos, year);
+            }
+
+            // Calcul de l'énergie totale déchargée sur la durée de vie (actualisée)
+            let totalPresentValueOfEnergyDischarged = 0;
+            const energyDischargedPerCycleKwh = systemSizeMw * dischargeDurationHours * 1000 * roundTripEfficiency; // kWh par cycle de décharge
+
+            for (let year = 1; year <= systemLifetimeYears; year++) {
+                const annualEnergyDischargedKwh = energyDischargedPerCycleKwh * annualCycles; // kWh par an
+                totalPresentValueOfEnergyDischarged += annualEnergyDischargedKwh / Math.pow(1 + discountRateLcos, year);
+            }
+
+            let lcos = 0;
+            if (totalPresentValueOfEnergyDischarged > 0) {
+                lcos = totalPresentValueOfCosts / totalPresentValueOfEnergyDischarged; // USD/kWh
+            } else {
+                lcos = Infinity; // Éviter la division par zéro
+            }
+            
+            // Affichage des résultats
+            document.getElementById('lcosAccResult').innerHTML = `
+                <p><strong>ACC (Coût Annuitisé de la Capacité) :</strong> ${acc.toFixed(2)} USD/an</p>
+                <p><strong>LCOS (Coût Actualisé de l'Énergie Stockée) :</strong> ${lcos.toFixed(4)} USD/kWh</p>
+                <p class="text-sm text-gray-700 mt-2">Ces calculs sont basés sur les paramètres et hypothèses fournis.</p>
+            `;
+        }
+
+        /**
+         * Initialise le graphique Lowest LCOS.
+         */
+        function initLowestLCOSChart() {
+            const ctx = document.getElementById('lowestLCOSChart').getContext('2d');
+            lowestLCOSChart = new Chart(ctx, {
+                type: 'bar', // Graphique à barres empilées
+                data: lowestLCOSData,
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: {
+                            stacked: true,
+                            title: {
+                                display: true,
+                                text: 'Année',
+                                font: { size: 14, weight: 'bold' }
+                            }
+                        },
+                        y: {
+                            stacked: true,
+                            beginAtZero: true,
+                            max: 100, // Probabilité jusqu'à 100%
+                            title: {
+                                display: true,
+                                text: 'Probabilité du LCOS le plus bas (%)',
+                                font: { size: 14, weight: 'bold' }
+                            },
+                            ticks: {
+                                callback: function(value) {
+                                    return value + '%';
+                                }
+                            }
+                        },
+                        y1: { // Axe Y secondaire pour la médiane
+                            type: 'linear',
+                            position: 'right',
+                            beginAtZero: true,
+                            grid: {
+                                drawOnChartArea: false // Ne pas dessiner les lignes de grille pour cet axe
+                            },
+                            title: {
+                                display: true,
+                                text: 'Médiane LCOS en USD/MWh',
+                                font: { size: 14, weight: 'bold' }
+                            }
+                        }
+                    },
+                    plugins: {
+                        tooltip: {
+                            mode: 'index',
+                            intersect: false,
+                            callbacks: {
+                                label: function(context) {
+                                    let label = context.dataset.label || '';
+                                    if (label) {
+                                        label += ': ';
+                                    }
+                                    if (context.dataset.type === 'line') {
+                                        label += context.parsed.y.toFixed(2) + ' USD/MWh';
+                                    } else {
+                                        label += context.parsed.y + '%';
+                                    }
+                                    return label;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        /**
+         * Initialise le graphique Lowest ACC.
+         */
+        function initLowestACCChart() {
+            const ctx = document.getElementById('lowestACCChart').getContext('2d');
+            lowestACCChart = new Chart(ctx, {
+                type: 'bar', // Graphique à barres empilées
+                data: lowestACCData,
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: {
+                            stacked: true,
+                            title: {
+                                display: true,
+                                text: 'Année',
+                                font: { size: 14, weight: 'bold' }
+                            }
+                        },
+                        y: {
+                            stacked: true,
+                            beginAtZero: true,
+                            max: 100, // Probabilité jusqu'à 100%
+                            title: {
+                                display: true,
+                                text: 'Probabilité du ACC le plus bas (%)',
+                                font: { size: 14, weight: 'bold' }
+                            },
+                            ticks: {
+                                callback: function(value) {
+                                    return value + '%';
+                                }
+                            }
+                        },
+                        y1: { // Axe Y secondaire pour la médiane
+                            type: 'linear',
+                            position: 'right',
+                            beginAtZero: true,
+                            grid: {
+                                drawOnChartArea: false // Ne pas dessiner les lignes de grille pour cet axe
+                            },
+                            title: {
+                                display: true,
+                                text: 'Médiane ACC en USD/kW-year',
+                                font: { size: 14, weight: 'bold' }
+                            }
+                        }
+                    },
+                    plugins: {
+                        tooltip: {
+                            mode: 'index',
+                            intersect: false,
+                            callbacks: {
+                                label: function(context) {
+                                    let label = context.dataset.label || '';
+                                    if (label) {
+                                        label += ': ';
+                                    }
+                                    if (context.dataset.type === 'line') {
+                                        label += context.parsed.y.toFixed(2) + ' USD/kW-year';
+                                    } else {
+                                        label += context.parsed.y + '%';
+                                    }
+                                    return label;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        /**
+         * Affiche le graphique sélectionné et masque l'autre.
+         * @param {string} graphId - L'ID du conteneur du graphique à afficher ('lcosGraph' ou 'accGraph').
+         * @param {HTMLElement} clickedButton - Le bouton sur lequel l'utilisateur a cliqué.
+         */
+        function showGraph(graphId, clickedButton) {
+            document.getElementById('lcosGraph').classList.add('hidden');
+            document.getElementById('accGraph').classList.add('hidden');
+            document.getElementById(graphId).classList.remove('hidden');
+
+            // Mettre à jour les classes actives des boutons
+            document.querySelectorAll('.tab-button').forEach(button => {
+                button.classList.remove('active');
+            });
+            
+            if (clickedButton) {
+                clickedButton.classList.add('active');
+            } else {
+                // Si appelé sans clic (ex: au chargement), trouver le bouton correspondant
+                const targetButton = document.querySelector(`.tab-buttons button[onclick*="showGraph('${graphId}')"]`);
+                if (targetButton) {
+                    targetButton.classList.add('active');
+                }
+            }
+        }
+
+        // Écouteur d'événement pour le changement de sélection de la technologie
+        document.getElementById('technologySelect').addEventListener('change', (event) => {
+            updateChart(event.target.value); // Met à jour le graphique avec la nouvelle technologie
+            // Réinitialiser le résultat et le point projeté lors du changement de technologie
+            document.getElementById('result').innerHTML = `<p>Sélectionnez une technologie et une capacité future pour voir la projection des coûts.</p>`;
+            
+            // Supprimer les points projetés précédents pour la nouvelle technologie
+            const tech = technologiesData[event.target.value];
+            // Filtrer les points qui ne sont pas dans les données historiques de la nouvelle technologie
+            experienceChart.data.datasets[0].data = experienceChart.data.datasets[0].data.filter(point => 
+                tech.historicalData.some(d => d.capacity === point.x && d.price === point.y)
+            );
+            // Réinitialiser le point de projection
+            experienceChart.data.datasets[2].data = [];
+            experienceChart.update();
+        });
+
+        // Initialiser les graphiques au chargement de la page
+        document.addEventListener('DOMContentLoaded', () => {
+            updateChart(document.getElementById('technologySelect').value);
+            initLowestLCOSChart();
+            initLowestACCChart();
+            showGraph('lcosGraph'); // Afficher le graphique LCOS par défaut au démarrage
+        });
+    </script>
+</body>
+</html>
