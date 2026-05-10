@@ -12,52 +12,98 @@ let selectedProfileFile: File | null = null;
 let selectedProfileCsvText: string | null = null;
 let selectedProfileSource: InputSource | null = null;
 let activeCharts: Array<Chart<keyof ChartTypeRegistry, unknown, unknown>> = [];
+let pageInitialized = false;
 
 type InputSource = "file" | "textarea";
 
-const csvFileInput = getElement<HTMLInputElement>("csvFileInput");
-const csvTextInput = getElement<HTMLTextAreaElement>("csv-text");
-const allowShortProfileInput = getElement<HTMLInputElement>("allow-short-profile");
-const runButton = getElement<HTMLButtonElement>("run-study-button");
-const fileStatus = getElement<HTMLElement>("selectedFileStatus");
-const fileParseStatus = getOptionalElement<HTMLElement>("fileParseStatus");
-const messageBox = getElement<HTMLElement>("message-box");
-const emptyState = getElement<HTMLElement>("empty-state");
-const resultsSection = getElement<HTMLElement>("results-section");
-const chartsSection = getElement<HTMLElement>("charts-section");
-const comparisonSection = getElement<HTMLElement>("comparison-section");
-const profileSummary = getElement<HTMLElement>("profile-summary");
-const profileWarnings = getElement<HTMLElement>("profile-warnings");
-const recommendedScenario = getElement<HTMLElement>("recommended-scenario");
-const kpiCards = getElement<HTMLElement>("kpi-cards");
-const scenarioTableBody = getElement<HTMLTableSectionElement>("scenario-table-body");
-const emsInterpretation = getElement<HTMLElement>("ems-interpretation");
-const downloadCsvButton = getElement<HTMLButtonElement>("download-csv-button");
-const downloadJsonButton = getElement<HTMLButtonElement>("download-json-button");
+let csvFileInput: HTMLInputElement;
+let csvTextInput: HTMLTextAreaElement;
+let allowShortProfileInput: HTMLInputElement;
+let runButton: HTMLButtonElement;
+let fileStatus: HTMLElement;
+let fileParseStatus: HTMLElement | null;
+let frontendModuleStatus: HTMLElement | null;
+let messageBox: HTMLElement;
+let emptyState: HTMLElement;
+let resultsSection: HTMLElement;
+let chartsSection: HTMLElement;
+let comparisonSection: HTMLElement;
+let profileSummary: HTMLElement;
+let profileWarnings: HTMLElement;
+let recommendedScenario: HTMLElement;
+let kpiCards: HTMLElement;
+let scenarioTableBody: HTMLTableSectionElement;
+let emsInterpretation: HTMLElement;
+let downloadCsvButton: HTMLButtonElement;
+let downloadJsonButton: HTMLButtonElement;
 
-if (document.readyState === "loading") {
-  document.addEventListener("DOMContentLoaded", initPage);
-} else {
-  initPage();
+document.addEventListener("DOMContentLoaded", () => {
+  initOcpEmsSimulatorPage();
+});
+
+if (document.readyState !== "loading") {
+  initOcpEmsSimulatorPage();
 }
 
-function initPage(): void {
-  initFileUpload();
-  initRunButton();
-  initDownloadButtons();
+function initOcpEmsSimulatorPage(): void {
+  if (pageInitialized) return;
+  pageInitialized = true;
+
+  try {
+    markFrontendLoaded();
+    cacheRequiredElements();
+    bindProfileFileInput();
+    bindRunStudyButton();
+    initDownloadButtons();
+  } catch (error) {
+    showVisibleError(formatError(error));
+  }
 }
 
-function initFileUpload(): void {
+function markFrontendLoaded(message = "Frontend module loaded. Upload handler ready."): void {
+  frontendModuleStatus = getOptionalElement<HTMLElement>("frontendModuleStatus");
+  if (frontendModuleStatus) {
+    frontendModuleStatus.textContent = message;
+    frontendModuleStatus.classList.remove("text-red-700", "bg-red-50", "border", "border-red-200", "rounded-xl", "p-3");
+  }
+}
+
+function cacheRequiredElements(): void {
+  csvFileInput = getElement<HTMLInputElement>("csvFileInput");
+  csvTextInput = getElement<HTMLTextAreaElement>("csv-text");
+  allowShortProfileInput = getElement<HTMLInputElement>("allow-short-profile");
+  runButton = getElement<HTMLButtonElement>("run-study-button");
+  fileStatus = getElement<HTMLElement>("selectedFileStatus");
+  fileParseStatus = getOptionalElement<HTMLElement>("fileParseStatus");
+  frontendModuleStatus = getOptionalElement<HTMLElement>("frontendModuleStatus");
+  messageBox = getElement<HTMLElement>("message-box");
+  emptyState = getElement<HTMLElement>("empty-state");
+  resultsSection = getElement<HTMLElement>("results-section");
+  chartsSection = getElement<HTMLElement>("charts-section");
+  comparisonSection = getElement<HTMLElement>("comparison-section");
+  profileSummary = getElement<HTMLElement>("profile-summary");
+  profileWarnings = getElement<HTMLElement>("profile-warnings");
+  recommendedScenario = getElement<HTMLElement>("recommended-scenario");
+  kpiCards = getElement<HTMLElement>("kpi-cards");
+  scenarioTableBody = getElement<HTMLTableSectionElement>("scenario-table-body");
+  emsInterpretation = getElement<HTMLElement>("ems-interpretation");
+  downloadCsvButton = getElement<HTMLButtonElement>("download-csv-button");
+  downloadJsonButton = getElement<HTMLButtonElement>("download-json-button");
+}
+
+function bindProfileFileInput(): void {
   const fileInput = document.getElementById("csvFileInput") as HTMLInputElement | null;
   const selectedFileStatus = document.getElementById("selectedFileStatus");
   const parseStatus = document.getElementById("fileParseStatus");
 
   if (!fileInput) {
-    showError("Upload input not found: csvFileInput");
+    showVisibleError("Upload input not found: csvFileInput");
     return;
   }
 
-  fileInput.addEventListener("change", () => {
+  markFrontendLoaded("Upload input found and handler attached.");
+
+  fileInput.onchange = () => {
     const file = fileInput.files?.[0] ?? null;
 
     selectedProfileFile = file;
@@ -70,37 +116,44 @@ function initFileUpload(): void {
       return;
     }
 
+    const extension = file.name.split(".").pop()?.toLowerCase() || "";
+    const detectedFormat = extension === "xlsx" || extension === "xls"
+      ? "Excel"
+      : extension === "csv"
+        ? "CSV"
+        : "Unknown";
+
     if (selectedFileStatus) {
       selectedFileStatus.textContent = `Selected file: ${file.name}`;
     }
 
     if (parseStatus) {
-      parseStatus.textContent = [
-        `Detected format: ${getUploadedFileFormat(file)}`,
-        "Ready to run simulation.",
-      ].join("\n");
+      parseStatus.innerHTML = `
+        <div>Detected format: ${detectedFormat}</div>
+        <div>Ready to run simulation.</div>
+      `;
     }
-  });
+  };
 }
 
-function initRunButton(): void {
-  runButton.addEventListener("click", () => {
+function bindRunStudyButton(): void {
+  runButton.onclick = () => {
     void runStudy();
-  });
+  };
 }
 
 function initDownloadButtons(): void {
-  downloadCsvButton.addEventListener("click", () => {
+  downloadCsvButton.onclick = () => {
     if (lastStudyResult) {
       downloadText("ocp_scenario_comparison.csv", lastStudyResult.scenarioComparisonCsv, "text/csv");
     }
-  });
+  };
 
-  downloadJsonButton.addEventListener("click", () => {
+  downloadJsonButton.onclick = () => {
     if (lastStudyResult) {
       downloadText("ocp_study_summary.json", lastStudyResult.studySummaryJson, "application/json");
     }
-  });
+  };
 }
 
 async function runStudy(): Promise<void> {
@@ -137,6 +190,7 @@ async function getProfileCsvForRun(): Promise<{ csvText: string; source: InputSo
   if (uploadedFile) {
     selectedProfileFile = uploadedFile;
     selectedProfileSource = "file";
+    renderFileStatus(`Selected file: ${uploadedFile.name}`, `Using uploaded file: ${uploadedFile.name}`);
     const parsedProfile = await readUploadedProfileFile(uploadedFile, {
       defaultStartDate: "2025-01-01T00:00:00",
       defaultConstantLoadMWh: 25,
@@ -219,7 +273,11 @@ function validateProfileCsvForRun(csvText: string, uploadedFile: File | null): v
 function renderFileStatus(selectedStatus: string, parseStatus: string | string[] = ""): void {
   fileStatus.textContent = selectedStatus;
   if (fileParseStatus) {
-    fileParseStatus.textContent = Array.isArray(parseStatus) ? parseStatus.join("\n") : parseStatus;
+    const lines = Array.isArray(parseStatus) ? parseStatus : [parseStatus];
+    fileParseStatus.innerHTML = lines
+      .filter((line) => line.length > 0)
+      .map((line) => `<div>${escapeHtml(line)}</div>`)
+      .join("");
   }
 }
 
@@ -646,8 +704,19 @@ function showMessage(message: string, type: "success" | "error"): void {
   messageBox.textContent = message;
 }
 
-function showError(message: string): void {
-  showMessage(message, "error");
+function showVisibleError(message: string): void {
+  const status = frontendModuleStatus ?? getOptionalElement<HTMLElement>("frontendModuleStatus");
+  if (status) {
+    status.textContent = message;
+    status.classList.add("text-red-700", "bg-red-50", "border", "border-red-200", "rounded-xl", "p-3");
+    return;
+  }
+
+  const fallbackMessageBox = getOptionalElement<HTMLElement>("message-box");
+  if (fallbackMessageBox) {
+    messageBox = fallbackMessageBox;
+    showMessage(message, "error");
+  }
 }
 
 function hideMessage(): void {
