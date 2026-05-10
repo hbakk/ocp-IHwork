@@ -4,10 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Optimisation OCP PV | Dashboard</title>
-    <link rel="manifest" href="/HK_energies/manifest.json">
+    <link rel="manifest" href="/ocp-IHwork/manifest.json">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
-    <link rel="apple-touch-icon" href="/HK_energies/icons/icon-192.png">
+    <link rel="apple-touch-icon" href="/ocp-IHwork/icons/icon-192.png">
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -212,9 +212,11 @@
     <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
-                navigator.serviceWorker.register('/HK_energies/sw.js').catch(err => {
-                    console.error('Service Worker registration failed:', err);
-                });
+                navigator.serviceWorker.getRegistrations()
+                    .then(registrations => Promise.all(registrations.map(registration => registration.unregister())))
+                    .catch(err => {
+                        console.error('Service Worker cleanup failed:', err);
+                    });
             });
         }
     </script>

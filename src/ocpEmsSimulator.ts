@@ -8,7 +8,9 @@ import { readUploadedProfileFile } from "./core/utils/profileFileReader.ts";
 import Chart from "chart.js/auto";
 
 let lastStudyResult: OcpCsvStudyResult | null = null;
-let selectedFile: File | null = null;
+let selectedProfileFile: File | null = null;
+let selectedProfileCsvText: string | null = null;
+let selectedProfileSource: InputSource | null = null;
 let activeCharts: Array<Chart<keyof ChartTypeRegistry, unknown, unknown>> = [];
 
 type InputSource = "file" | "textarea";
@@ -17,7 +19,8 @@ const csvFileInput = getElement<HTMLInputElement>("csvFileInput");
 const csvTextInput = getElement<HTMLTextAreaElement>("csv-text");
 const allowShortProfileInput = getElement<HTMLInputElement>("allow-short-profile");
 const runButton = getElement<HTMLButtonElement>("run-study-button");
-const fileStatus = getElement<HTMLElement>("selectedFileStatus", "file-status");
+const fileStatus = getElement<HTMLElement>("selectedFileStatus");
+const fileParseStatus = getOptionalElement<HTMLElement>("fileParseStatus");
 const messageBox = getElement<HTMLElement>("message-box");
 const emptyState = getElement<HTMLElement>("empty-state");
 const resultsSection = getElement<HTMLElement>("results-section");
@@ -32,55 +35,91 @@ const emsInterpretation = getElement<HTMLElement>("ems-interpretation");
 const downloadCsvButton = getElement<HTMLButtonElement>("download-csv-button");
 const downloadJsonButton = getElement<HTMLButtonElement>("download-json-button");
 
-csvFileInput.addEventListener("change", () => {
-  selectedFile = csvFileInput.files?.[0] ?? null;
-  if (!selectedFile) {
-    renderFileStatus(["No file selected."]);
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", initPage);
+} else {
+  initPage();
+}
+
+function initPage(): void {
+  initFileUpload();
+  initRunButton();
+  initDownloadButtons();
+}
+
+function initFileUpload(): void {
+  const fileInput = document.getElementById("csvFileInput") as HTMLInputElement | null;
+  const selectedFileStatus = document.getElementById("selectedFileStatus");
+  const parseStatus = document.getElementById("fileParseStatus");
+
+  if (!fileInput) {
+    showError("Upload input not found: csvFileInput");
     return;
   }
 
-  renderFileStatus([
-    `Selected file: ${selectedFile.name}`,
-    `Detected format: ${getUploadedFileFormat(selectedFile)}`,
-    "Ready to run simulation.",
-  ]);
-  console.info("[OCP EMS Simulator] selected file:", selectedFile.name);
-});
+  fileInput.addEventListener("change", () => {
+    const file = fileInput.files?.[0] ?? null;
 
-runButton.addEventListener("click", () => {
-  void runStudy();
-});
+    selectedProfileFile = file;
+    selectedProfileCsvText = null;
+    selectedProfileSource = file ? "file" : null;
 
-downloadCsvButton.addEventListener("click", () => {
-  if (lastStudyResult) {
-    downloadText("ocp_scenario_comparison.csv", lastStudyResult.scenarioComparisonCsv, "text/csv");
-  }
-});
+    if (!file) {
+      if (selectedFileStatus) selectedFileStatus.textContent = "No file selected.";
+      if (parseStatus) parseStatus.textContent = "";
+      return;
+    }
 
-downloadJsonButton.addEventListener("click", () => {
-  if (lastStudyResult) {
-    downloadText("ocp_study_summary.json", lastStudyResult.studySummaryJson, "application/json");
-  }
-});
+    if (selectedFileStatus) {
+      selectedFileStatus.textContent = `Selected file: ${file.name}`;
+    }
+
+    if (parseStatus) {
+      parseStatus.textContent = [
+        `Detected format: ${getUploadedFileFormat(file)}`,
+        "Ready to run simulation.",
+      ].join("\n");
+    }
+  });
+}
+
+function initRunButton(): void {
+  runButton.addEventListener("click", () => {
+    void runStudy();
+  });
+}
+
+function initDownloadButtons(): void {
+  downloadCsvButton.addEventListener("click", () => {
+    if (lastStudyResult) {
+      downloadText("ocp_scenario_comparison.csv", lastStudyResult.scenarioComparisonCsv, "text/csv");
+    }
+  });
+
+  downloadJsonButton.addEventListener("click", () => {
+    if (lastStudyResult) {
+      downloadText("ocp_study_summary.json", lastStudyResult.studySummaryJson, "application/json");
+    }
+  });
+}
 
 async function runStudy(): Promise<void> {
   setLoading(true);
   hideMessage();
 
   try {
-    const { csvText, source } = await readCsvInput();
-    if (csvText.trim().length === 0) {
-      throw new Error("No profile data provided. Upload a CSV/Excel file or paste CSV data before running the study.");
-    }
-    console.info("[OCP EMS Simulator] CSV input source:", source, "length:", csvText.length);
+    const { csvText, source } = await getProfileCsvForRun();
+    const finalCsvText = selectedProfileCsvText ?? csvText;
+    const finalSource = selectedProfileSource ?? source;
+    validateProfileCsvForRun(finalCsvText, selectedProfileFile);
 
-    const result = runOcpStudyFromCsv(csvText, {
+    const result = runOcpStudyFromCsv(finalCsvText, {
       allowShortProfileForTesting: allowShortProfileInput.checked,
     });
 
     lastStudyResult = result;
     renderResults(result);
-    showMessage("OCP EMS study completed successfully.", "success");
+    showMessage(`OCP EMS study completed successfully using ${finalSource}.`, "success");
   } catch (error) {
     resultsSection.classList.add("hidden");
     chartsSection.classList.add("hidden");
@@ -92,37 +131,39 @@ async function runStudy(): Promise<void> {
   }
 }
 
-async function readCsvInput(): Promise<{ csvText: string; source: InputSource }> {
-  const uploadedFile = selectedFile ?? csvFileInput.files?.[0] ?? null;
+async function getProfileCsvForRun(): Promise<{ csvText: string; source: InputSource }> {
+  const uploadedFile = selectedProfileFile ?? csvFileInput.files?.[0] ?? null;
 
   if (uploadedFile) {
-    selectedFile = uploadedFile;
+    selectedProfileFile = uploadedFile;
+    selectedProfileSource = "file";
     const parsedProfile = await readUploadedProfileFile(uploadedFile, {
       defaultStartDate: "2025-01-01T00:00:00",
       defaultConstantLoadMWh: 25,
       generateConstantLoadIfMissing: true,
       annualRowsUseGeneratedTimestamps: true,
     });
+    selectedProfileCsvText = parsedProfile.csvText;
+
     if (parsedProfile.detectedFormat === "Excel") {
-      const statusLines = [
-        `Selected file: ${uploadedFile.name}`,
+      const parseStatusLines = [
         `Detected format: ${parsedProfile.detectedFormat}`,
         `Excel profile parsed successfully: ${formatNumber(parsedProfile.rowCount, 0)} rows.`,
       ];
 
       if (parsedProfile.generatedHourlyTimestamps) {
-        statusLines.push("Hourly timestamps generated from 2025-01-01T00:00:00.");
+        parseStatusLines.push("Hourly timestamps generated from 2025-01-01T00:00:00.");
       }
       if (parsedProfile.generatedConstantLoad) {
-        statusLines.push("Missing consumption column: constant 25 MWh hourly load generated.");
+        parseStatusLines.push("Missing consumption column: constant 25 MWh hourly load generated.");
       }
 
-      renderFileStatus(statusLines);
+      renderFileStatus(`Selected file: ${uploadedFile.name}`, parseStatusLines);
     } else {
-      renderFileStatus([
-        `Selected file: ${uploadedFile.name}`,
+      renderFileStatus(`Selected file: ${uploadedFile.name}`, [
         "Detected format: CSV",
-        `CSV profile ready: ${formatNumber(parsedProfile.rowCount, 0)} rows.`,
+        "CSV profile loaded successfully.",
+        `Rows: ${formatNumber(parsedProfile.rowCount, 0)}.`,
       ]);
     }
     return {
@@ -131,14 +172,55 @@ async function readCsvInput(): Promise<{ csvText: string; source: InputSource }>
     };
   }
 
+  const pasted = csvTextInput.value.trim();
+  if (!pasted) {
+    throw new Error("Please upload a CSV/Excel file or paste CSV data.");
+  }
+
+  selectedProfileSource = "textarea";
+  selectedProfileCsvText = pasted;
+  renderFileStatus("No file selected.", "Using pasted CSV data.");
+
   return {
-    csvText: csvTextInput.value,
+    csvText: pasted,
     source: "textarea",
   };
 }
 
-function renderFileStatus(lines: string[]): void {
-  fileStatus.textContent = lines.join("\n");
+function validateProfileCsvForRun(csvText: string, uploadedFile: File | null): void {
+  const trimmed = csvText.trim();
+  if (trimmed.length === 0) {
+    throw new Error("Please upload a CSV/Excel file or paste CSV data.");
+  }
+
+  const conflictMarkers = ["<".repeat(7), "=".repeat(7), ">".repeat(7)];
+  if (conflictMarkers.some((marker) => trimmed.includes(marker))) {
+    throw new Error("Profile CSV contains unresolved conflict markers. Remove them before running the study.");
+  }
+
+  const lines = trimmed.split(/\r?\n/);
+  if (lines.length <= 1) {
+    throw new Error("Profile CSV must contain a header and at least one data row.");
+  }
+
+  const normalizedHeader = lines[0].trim().toLowerCase();
+  if (!normalizedHeader.includes("timestamp") || !normalizedHeader.includes("production_mwh") || !normalizedHeader.includes("consumption_mwh")) {
+    throw new Error("Profile CSV header must contain timestamp, production_mwh, and consumption_mwh.");
+  }
+
+  if (uploadedFile && getUploadedFileFormat(uploadedFile) === "Excel") {
+    const dataRowCount = lines.length - 1;
+    if ((dataRowCount === 8760 || dataRowCount === 8784) && lines.length !== dataRowCount + 1) {
+      throw new Error("Excel profile normalization failed: final CSV line count does not match the annual row count.");
+    }
+  }
+}
+
+function renderFileStatus(selectedStatus: string, parseStatus: string | string[] = ""): void {
+  fileStatus.textContent = selectedStatus;
+  if (fileParseStatus) {
+    fileParseStatus.textContent = Array.isArray(parseStatus) ? parseStatus.join("\n") : parseStatus;
+  }
 }
 
 function getUploadedFileFormat(file: File): "CSV" | "Excel" {
@@ -564,6 +646,10 @@ function showMessage(message: string, type: "success" | "error"): void {
   messageBox.textContent = message;
 }
 
+function showError(message: string): void {
+  showMessage(message, "error");
+}
+
 function hideMessage(): void {
   messageBox.classList.add("hidden");
   messageBox.textContent = "";
@@ -629,4 +715,8 @@ function getElement<T extends HTMLElement>(id: string, fallbackId?: string): T {
     throw new Error(`Missing page element: ${id}`);
   }
   return element as T;
+}
+
+function getOptionalElement<T extends HTMLElement>(id: string): T | null {
+  return document.getElementById(id) as T | null;
 }
